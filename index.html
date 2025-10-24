@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiwi Landlord Empire - Your Rental Hellscape Awaits</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Kiwi Landlord Empire</h1>
+            <p class="subtitle">Building wealth, one exploited tenant at a time</p>
+        </header>
+
+        <!-- Main Stats -->
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-label">Cash</div>
+                <div class="stat-value" id="money">$0</div>
+                <div class="stat-subtext" id="income-rate">$0/week</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Moral Compass</div>
+                <div class="stat-value" id="moral-value">Questionably Kiwi</div>
+                <div class="stat-info">ⓘ Your ethical standing. Lower morals inflate bribe costs.</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Political Power</div>
+                <div class="stat-value" id="political-value">Civilian Scumbag</div>
+                <div class="stat-info">ⓘ Accrued influence. Higher levels unlock impactful actions.</div>
+            </div>
+        </div>
+
+        <!-- Speed Controls -->
+        <div class="speed-controls">
+            <button class="speed-btn" data-speed="0">Pause (0s/wk)</button>
+            <button class="speed-btn active" data-speed="10">Normal (10s/wk)</button>
+            <button class="speed-btn" data-speed="5">Fast (5s/wk)</button>
+            <button class="speed-btn" data-speed="2">Very Fast (2s/wk)</button>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- Left Column: Properties & Tenants -->
+            <div class="left-column">
+                <section class="panel">
+                    <h2>Your Properties</h2>
+                    <div id="properties-list">
+                        <div class="property-card">
+                            <div class="property-header">
+                                <span class="property-name">Mouldy Flat</span>
+                                <span class="property-owned">Owned: <span id="moldy-flat-count">0</span></span>
+                            </div>
+                            <div class="property-stats">
+                                <div>Income: $150/week each</div>
+                                <div>Cost: $<span id="moldy-flat-cost">50000</span></div>
+                            </div>
+                            <button class="buy-btn" id="buy-moldy-flat">Buy Mouldy Flat</button>
+                        </div>
+
+                        <div class="property-card">
+                            <div class="property-header">
+                                <span class="property-name">Earthquake-Risk Shitbox</span>
+                                <span class="property-owned">Owned: <span id="shitbox-count">0</span></span>
+                            </div>
+                            <div class="property-stats">
+                                <div>Income: $500/week each</div>
+                                <div>Cost: $<span id="shitbox-cost">200000</span></div>
+                            </div>
+                            <button class="buy-btn" id="buy-shitbox" disabled>Buy Shitbox</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h2>Your Tenants</h2>
+                    <div id="tenants-list">
+                        <div class="tenant-stat">Total Tenants: <span id="total-tenants">0</span></div>
+                        <div class="tenant-stat">Exploited This Week: <span id="exploited-count">0</span></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Actions & News -->
+            <div class="right-column">
+                <section class="panel">
+                    <h2>Evil Actions</h2>
+                    <div class="actions-grid">
+                        <button class="action-btn" id="raise-rents" disabled>
+                            <div class="action-name">RAISE ALL RENTS</div>
+                            <div class="action-cost">Costs: $0 | +5 Political Power</div>
+                        </button>
+                        <button class="action-btn" id="ignore-standards" disabled>
+                            <div class="action-name">IGNORE HEALTHY HOMES</div>
+                            <div class="action-cost">Costs: $0 | -10 Moral</div>
+                        </button>
+                        <button class="action-btn" id="bullshit-fees" disabled>
+                            <div class="action-name">INVENT BULLSHIT FEES</div>
+                            <div class="action-cost">Costs: $0 | +$2000</div>
+                        </button>
+                        <button class="action-btn" id="no-cause-eviction" disabled>
+                            <div class="action-name">90-DAY NO-CAUSE EVICTION</div>
+                            <div class="action-cost">Costs: $0 | -20 Moral</div>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h2>Political Corruption</h2>
+                    <div class="actions-grid">
+                        <button class="action-btn political" id="bribe-councillor" disabled>
+                            <div class="action-name">BRIBE LOCAL COUNCILLOR</div>
+                            <div class="action-cost">Costs: $<span id="bribe-cost">5000</span></div>
+                        </button>
+                        <button class="action-btn political" id="lobby-bishop" disabled>
+                            <div class="action-name">DONATE TO CHRIS BISHOP</div>
+                            <div class="action-cost">Costs: $20000 | +50 Political Power</div>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="panel news-panel">
+                    <h2>News from Aotearoa's Rental Hellscape</h2>
+                    <div id="news-feed">
+                        <div class="news-item">
+                            <strong>Breaking:</strong> Another aspiring first-home buyer gives up, resigns to renting forever.
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <button id="save-game" class="utility-btn">Save Game</button>
+            <button id="reset-game" class="utility-btn danger">Reset Game</button>
+            <div class="version">v0.1 - Bitingly Satirical Edition</div>
+        </footer>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
