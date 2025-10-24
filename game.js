@@ -128,6 +128,13 @@ function startGameLoop() {
             addNews(randomNews);
         }
     }, 45000);
+
+    // Random events every 60-120 seconds
+    setInterval(() => {
+        if (gameState.tenants > 0 && Math.random() > 0.6) {
+            triggerRandomEvent();
+        }
+    }, 90000);
 }
 
 // Calculate Weekly Income
@@ -519,6 +526,46 @@ function resetGame() {
     }
 }
 
+function shareStats() {
+    const totalProperties = Object.values(gameState.properties).reduce((sum, prop) => sum + prop.count, 0);
+    const stats = `
+🏚️ KIWI LANDLORD EMPIRE 🏚️
+
+My Slumlord Stats:
+💰 Cash: ${formatMoney(gameState.money)}
+🏠 Properties: ${totalProperties}
+👥 Tenants Exploited: ${gameState.tenants}
+📊 Weekly Income: ${formatMoney(calculateWeeklyIncome())}
+
+🧭 Moral Compass: ${getMoralLevel().name}
+🎭 Political Power: ${getPoliticalLevel().name}
+
+📋 Evil Deeds:
+• Rent Raises: ${gameState.actionsPerformed.rentRaises}
+• No-Cause Evictions: ${gameState.actionsPerformed.evictions}
+• Healthy Homes Violations: ${gameState.actionsPerformed.violations}
+• Bribes Paid: ${gameState.actionsPerformed.bribes}
+
+A biting satire of NZ's housing crisis.
+Play at: [Your URL Here]
+`.trim();
+
+    // Copy to clipboard
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(stats).then(() => {
+            addNews("📋 Stats copied to clipboard! Share your empire of exploitation with the world.");
+        }).catch(() => {
+            // Fallback: show in alert
+            alert(stats);
+            addNews("📋 Stats displayed. Copy manually to share your shameful achievements.");
+        });
+    } else {
+        // Fallback for older browsers
+        alert(stats);
+        addNews("📋 Stats displayed. Copy manually to share your shameful achievements.");
+    }
+}
+
 // Event Listeners
 function setupEventListeners() {
     // Properties
@@ -550,12 +597,142 @@ function setupEventListeners() {
         btn.addEventListener('click', () => setSpeed(parseInt(btn.dataset.speed)));
     });
 
-    // Save/Reset
+    // Save/Reset/Share
     document.getElementById('save-game').addEventListener('click', saveGame);
+    document.getElementById('share-stats').addEventListener('click', shareStats);
     document.getElementById('reset-game').addEventListener('click', resetGame);
 
     // Auto-save every 30 seconds
     setInterval(saveGame, 30000);
+}
+
+// Random Events System
+function triggerRandomEvent() {
+    const events = [
+        {
+            name: "Healthy Homes Inspection",
+            condition: () => gameState.actionsPerformed.violations > 0,
+            effect: () => {
+                if (gameState.political >= 150) {
+                    addNews("⚠️ EVENT: Healthy Homes inspector arrives. You make a phone call. Inspector leaves. Nothing to see here.");
+                    gameState.political -= 10;
+                } else {
+                    const fine = gameState.tenants * 1000;
+                    gameState.money -= fine;
+                    addNews(`⚠️ EVENT: Healthy Homes inspection failed! Fined $${formatNumber(fine)}. Should've bribed harder.`);
+                }
+            }
+        },
+        {
+            name: "Tenant Organizes Union",
+            condition: () => gameState.tenants >= 10 && gameState.actionsPerformed.rentRaises > 5,
+            effect: () => {
+                gameState.moral -= 15;
+                addNews("⚠️ EVENT: Your tenants formed a renters union. They're comparing notes on your 'bullshit fees'.");
+            }
+        },
+        {
+            name: "Interest Rate Rise",
+            condition: () => Math.random() > 0.7,
+            effect: () => {
+                const cost = Object.values(gameState.properties).reduce((sum, prop) => sum + prop.count, 0) * 500;
+                gameState.money -= cost;
+                addNews(`⚠️ EVENT: Interest rates spike! Mortgage costs up $${formatNumber(cost)}/week. Thanks RBNZ.`);
+            }
+        },
+        {
+            name: "Migration Surge",
+            condition: () => Math.random() > 0.8,
+            effect: () => {
+                const bonus = gameState.tenants * 200;
+                gameState.money += bonus;
+                addNews(`✅ EVENT: Unexpected migration surge! Demand skyrockets. You raise rent immediately. +$${formatNumber(bonus)}`);
+            }
+        },
+        {
+            name: "Mould Outbreak",
+            condition: () => gameState.actionsPerformed.violations > 3,
+            effect: () => {
+                const remediation = gameState.tenants * 800;
+                gameState.money -= remediation;
+                gameState.moral -= 10;
+                addNews(`⚠️ EVENT: Black mould outbreak in multiple properties. Forced to remediate. Cost: $${formatNumber(remediation)}`);
+            }
+        },
+        {
+            name: "Spinoff Exposé",
+            condition: () => gameState.moral < 40 && gameState.political < 300,
+            effect: () => {
+                gameState.moral -= 20;
+                gameState.political -= 30;
+                addNews("⚠️ EVENT: The Spinoff publishes exposé on your slumlord empire. Public opinion turns. Can't suppress this one.");
+            }
+        },
+        {
+            name: "Government Subsidy Announced",
+            condition: () => gameState.political >= 100,
+            effect: () => {
+                const subsidy = gameState.tenants * 150;
+                gameState.money += subsidy;
+                addNews(`✅ EVENT: Government announces rental subsidy. Your political connections ensure you benefit. +$${formatNumber(subsidy)}`);
+            }
+        },
+        {
+            name: "Earthquake Damage",
+            condition: () => gameState.properties.shitbox.count > 0,
+            effect: () => {
+                const damage = gameState.properties.shitbox.count * 5000;
+                gameState.money -= damage;
+                addNews(`⚠️ EVENT: Minor earthquake damages your shitboxes. Insurance doesn't cover 'pre-existing structural defects'. -$${formatNumber(damage)}`);
+            }
+        },
+        {
+            name: "Tenant Falls Through Floor",
+            condition: () => gameState.actionsPerformed.violations >= 5,
+            effect: () => {
+                gameState.money -= 15000;
+                gameState.moral -= 25;
+                addNews("⚠️ EVENT: Tenant falls through rotted floor. ACC investigates. Legal fees mount. You blame tenant for 'excessive walking'.");
+            }
+        },
+        {
+            name: "Bishop Announcement",
+            condition: () => gameState.political >= 200,
+            effect: () => {
+                gameState.political += 20;
+                addNews("✅ EVENT: Chris Bishop announces new landlord-friendly legislation. You're quoted as 'valuable stakeholder'. +20 Political.");
+            }
+        },
+        {
+            name: "Market Correction",
+            condition: () => Object.values(gameState.properties).reduce((sum, prop) => sum + prop.count, 0) >= 20,
+            effect: () => {
+                // Reduce property costs by 10%
+                for (let key in gameState.properties) {
+                    gameState.properties[key].cost = Math.floor(gameState.properties[key].cost * 0.9);
+                }
+                addNews("⚠️ EVENT: Housing market correction! Property values drop 10%. Your overleveraged empire wobbles.");
+            }
+        },
+        {
+            name: "Overseas Investment Boom",
+            condition: () => Math.random() > 0.85,
+            effect: () => {
+                const offer = 50000 * (1 + Math.random());
+                gameState.money += offer;
+                addNews(`✅ EVENT: Chinese investor makes unsolicited cash offer. You accept immediately. +$${formatNumber(offer)}`);
+            }
+        }
+    ];
+
+    // Filter events that meet conditions
+    const availableEvents = events.filter(event => event.condition());
+
+    if (availableEvents.length > 0) {
+        const selectedEvent = availableEvents[Math.floor(Math.random() * availableEvents.length)];
+        selectedEvent.effect();
+        updateUI();
+    }
 }
 
 // Endings System
