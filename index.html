@@ -71,6 +71,42 @@
                             </div>
                             <button class="buy-btn" id="buy-shitbox" disabled>Buy Shitbox</button>
                         </div>
+
+                        <div class="property-card">
+                            <div class="property-header">
+                                <span class="property-name">Leaky Building Complex</span>
+                                <span class="property-owned">Owned: <span id="leaky-count">0</span></span>
+                            </div>
+                            <div class="property-stats">
+                                <div>Income: $1,200/week each</div>
+                                <div>Cost: $<span id="leaky-cost">500000</span></div>
+                            </div>
+                            <button class="buy-btn" id="buy-leaky" disabled>Buy Leaky Complex</button>
+                        </div>
+
+                        <div class="property-card">
+                            <div class="property-header">
+                                <span class="property-name">Luxury "Investment" Apartment</span>
+                                <span class="property-owned">Owned: <span id="luxury-count">0</span></span>
+                            </div>
+                            <div class="property-stats">
+                                <div>Income: $2,500/week each</div>
+                                <div>Cost: $<span id="luxury-cost">1200000</span></div>
+                            </div>
+                            <button class="buy-btn" id="buy-luxury" disabled>Buy Luxury Apartment</button>
+                        </div>
+
+                        <div class="property-card">
+                            <div class="property-header">
+                                <span class="property-name">Entire Apartment Block</span>
+                                <span class="property-owned">Owned: <span id="block-count">0</span></span>
+                            </div>
+                            <div class="property-stats">
+                                <div>Income: $8,000/week each</div>
+                                <div>Cost: $<span id="block-cost">5000000</span></div>
+                            </div>
+                            <button class="buy-btn" id="buy-block" disabled>Buy Apartment Block</button>
+                        </div>
                     </div>
                 </section>
 
@@ -104,6 +140,22 @@
                             <div class="action-name">90-DAY NO-CAUSE EVICTION</div>
                             <div class="action-cost">Costs: $0 | -20 Moral</div>
                         </button>
+                        <button class="action-btn" id="convert-airbnb" disabled>
+                            <div class="action-name">CONVERT TO AIRBNB</div>
+                            <div class="action-cost">Costs: $5000 | +$15000 | -15 Moral</div>
+                        </button>
+                        <button class="action-btn" id="subdivide" disabled>
+                            <div class="action-name">SUBDIVIDE & CRAM MORE IN</div>
+                            <div class="action-cost">Costs: $10000 | Double income | -25 Moral</div>
+                        </button>
+                        <button class="action-btn" id="pet-bond" disabled>
+                            <div class="action-name">DEMAND PET BOND</div>
+                            <div class="action-cost">Costs: $0 | +$3000 | -5 Moral</div>
+                        </button>
+                        <button class="action-btn" id="overseas-investor" disabled>
+                            <div class="action-name">SELL TO OVERSEAS INVESTOR</div>
+                            <div class="action-cost">Sell 1 property for 2x value | +10 Political</div>
+                        </button>
                     </div>
                 </section>
 
@@ -117,6 +169,18 @@
                         <button class="action-btn political" id="lobby-bishop" disabled>
                             <div class="action-name">DONATE TO CHRIS BISHOP</div>
                             <div class="action-cost">Costs: $20000 | +50 Political Power</div>
+                        </button>
+                        <button class="action-btn political" id="suppress-media" disabled>
+                            <div class="action-name">SUPPRESS RNZ INVESTIGATION</div>
+                            <div class="action-cost">Costs: $<span id="suppress-cost">15000</span> | Requires: Council Pest</div>
+                        </button>
+                        <button class="action-btn political" id="text-bill-english" disabled>
+                            <div class="action-name">TEXT SIR BILL ENGLISH</div>
+                            <div class="action-cost">Costs: $50000 | +100 Political | Requires: Bishop's Mate</div>
+                        </button>
+                        <button class="action-btn political" id="kainga-ora-board" disabled>
+                            <div class="action-name">GET APPOINTED TO KĀINGA ORA BOARD</div>
+                            <div class="action-cost">Costs: $100000 | Win Condition | Requires: Property Lobby</div>
                         </button>
                     </div>
                 </section>
