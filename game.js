@@ -3,7 +3,7 @@
 
 // Game State
 const gameState = {
-    money: 0,
+    money: 50000,
     moral: 100, // 0-100, lower is more evil
     political: 0, // 0-1000+, higher unlocks more corruption
 
@@ -527,7 +527,15 @@ function loadGame() {
         const loaded = JSON.parse(saved);
         Object.assign(gameState, loaded);
         gameState.lastUpdate = Date.now(); // Reset timer
-        addNews('Game loaded. Welcome back, slumlord.');
+
+        // Migration: Fix old saves that started with $0
+        const totalProperties = Object.values(gameState.properties).reduce((sum, prop) => sum + prop.count, 0);
+        if (gameState.money < 1000 && totalProperties === 0) {
+            gameState.money = 50000;
+            addNews('🎁 SYSTEM UPDATE: Starting funds adjusted to $50,000. The game is now playable!');
+        } else {
+            addNews('Game loaded. Welcome back, slumlord.');
+        }
     }
 }
 
