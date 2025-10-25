@@ -3,7 +3,7 @@
 
 // Game State
 const gameState = {
-    money: 0,
+    money: 50000,
     moral: 100, // 0-100, lower is more evil
     political: 0, // 0-1000+, higher unlocks more corruption
 
