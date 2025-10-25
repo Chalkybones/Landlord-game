@@ -93,6 +93,54 @@ header h1 {
     margin-top: 5px;
 }
 
+/* Collect Rent Section */
+.collect-rent-section {
+    background: linear-gradient(135deg, var(--teal-primary) 0%, var(--teal-light) 100%);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0, 133, 142, 0.3);
+    text-align: center;
+}
+
+.collect-rent-btn {
+    width: 100%;
+    padding: 20px 30px;
+    background: white;
+    color: var(--teal-primary);
+    border: none;
+    border-radius: 8px;
+    font-size: 1.4em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    letter-spacing: 1px;
+}
+
+.collect-rent-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    background: #f0f0f0;
+}
+
+.collect-rent-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.collect-rent-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.collect-hint {
+    color: white;
+    margin-top: 10px;
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
 /* Speed Controls */
 .speed-controls {
     display: flex;

@@ -3,12 +3,12 @@
 
 // Game State
 const gameState = {
-    money: 50000,
+    money: 0, // Start with 0 cash after buying initial properties
     moral: 100, // 0-100, lower is more evil
     political: 0, // 0-1000+, higher unlocks more corruption
 
     properties: {
-        moldyFlat: { count: 0, cost: 50000, income: 150, costMultiplier: 1.15 },
+        moldyFlat: { count: 3, cost: 66125, income: 150, costMultiplier: 1.15 }, // Start with 3 properties
         shitbox: { count: 0, cost: 200000, income: 500, costMultiplier: 1.18 },
         leaky: { count: 0, cost: 500000, income: 1200, costMultiplier: 1.20 },
         luxury: { count: 0, cost: 1200000, income: 2500, costMultiplier: 1.22 },
@@ -20,6 +20,7 @@ const gameState = {
 
     speed: 10, // seconds per week
     lastUpdate: Date.now(),
+    lastRentCollect: 0, // For manual rent collection cooldown
 
     newsHistory: [],
     actionsPerformed: {
@@ -27,6 +28,14 @@ const gameState = {
         evictions: 0,
         violations: 0,
         bribes: 0
+    },
+
+    // Cooldown tracking for repeatable actions
+    cooldowns: {
+        collectRent: 0,
+        raiseRents: 0,
+        bullshitFees: 0,
+        petBond: 0
     }
 };
 
@@ -106,11 +115,16 @@ const newsHeadlines = [
 
 // Initialize Game
 function init() {
+    const isNewGame = !localStorage.getItem('kiwiLandlordEmpire');
     loadGame();
     updateUI();
     setupEventListeners();
     startGameLoop();
-    addNews("Welcome to Kiwi Landlord Empire. Your journey into moral bankruptcy begins now.");
+
+    if (isNewGame) {
+        addNews("Welcome to Kiwi Landlord Empire. You've inherited 3 mouldy flats. Your journey into moral bankruptcy begins now.");
+        addNews("💡 TIP: Click the COLLECT RENT button to actively harass tenants for bonus payments!");
+    }
 }
 
 // Game Loop
@@ -201,14 +215,45 @@ function updateButtonStates() {
     // Enable evil actions if you have properties
     const hasProperties = gameState.tenants > 0;
     const totalProperties = Object.values(gameState.properties).reduce((sum, prop) => sum + prop.count, 0);
+    const now = Date.now();
 
-    document.getElementById('raise-rents').disabled = !hasProperties;
+    // Collect Rent button with cooldown
+    const collectRentBtn = document.getElementById('collect-rent');
+    if (collectRentBtn) {
+        const collectCooldown = 5000;
+        const collectTimeLeft = Math.max(0, collectCooldown - (now - gameState.cooldowns.collectRent));
+        collectRentBtn.disabled = !hasProperties || collectTimeLeft > 0;
+
+        if (collectTimeLeft > 0) {
+            collectRentBtn.textContent = `COLLECT RENT (${Math.ceil(collectTimeLeft / 1000)}s)`;
+        } else {
+            collectRentBtn.textContent = 'COLLECT RENT';
+        }
+    }
+
+    // Raise Rents with cooldown
+    const raiseRentsBtn = document.getElementById('raise-rents');
+    const raiseRentsCooldown = 30000;
+    const raiseRentsTimeLeft = Math.max(0, raiseRentsCooldown - (now - gameState.cooldowns.raiseRents));
+    raiseRentsBtn.disabled = !hasProperties || raiseRentsTimeLeft > 0;
+
+    // Bullshit Fees with cooldown
+    const bullshitFeesBtn = document.getElementById('bullshit-fees');
+    const bullshitCooldown = 45000;
+    const bullshitTimeLeft = Math.max(0, bullshitCooldown - (now - gameState.cooldowns.bullshitFees));
+    bullshitFeesBtn.disabled = !hasProperties || bullshitTimeLeft > 0;
+
+    // Pet Bond with cooldown
+    const petBondBtn = document.getElementById('pet-bond');
+    const petBondCooldown = 60000;
+    const petBondTimeLeft = Math.max(0, petBondCooldown - (now - gameState.cooldowns.petBond));
+    petBondBtn.disabled = !hasProperties || petBondTimeLeft > 0;
+
+    // Other actions without cooldowns
     document.getElementById('ignore-standards').disabled = !hasProperties;
-    document.getElementById('bullshit-fees').disabled = !hasProperties;
     document.getElementById('no-cause-eviction').disabled = !hasProperties;
     document.getElementById('convert-airbnb').disabled = !hasProperties || gameState.money < 5000;
     document.getElementById('subdivide').disabled = !hasProperties || gameState.money < 10000;
-    document.getElementById('pet-bond').disabled = !hasProperties;
     document.getElementById('overseas-investor').disabled = totalProperties === 0;
 
     // Political corruption
@@ -301,15 +346,52 @@ function buyProperty(propKey) {
     }
 }
 
+// Manual Rent Collection (Active Clicker Mechanic)
+function collectRent() {
+    if (gameState.tenants === 0) return;
+
+    const now = Date.now();
+    const cooldown = 5000; // 5 second cooldown
+
+    if (now - gameState.cooldowns.collectRent < cooldown) {
+        return; // Still on cooldown
+    }
+
+    // Collect bonus rent: $50-150 per tenant
+    const perTenant = 50 + Math.floor(Math.random() * 100);
+    const collected = perTenant * gameState.tenants;
+    gameState.money += collected;
+    gameState.cooldowns.collectRent = now;
+
+    const messages = [
+        `Knocked aggressively on doors. Collected $${formatNumber(collected)} in \"urgent payments\".`,
+        `Sent threatening letters. Tenants coughed up $${formatNumber(collected)}.`,
+        `Showed up unannounced during dinner. Extracted $${formatNumber(collected)}.`,
+        `Mentioned \"possible rent increase\" casually. Received $${formatNumber(collected)} immediately.`,
+        `Implied maintenance depends on prompt payment. Collected $${formatNumber(collected)}.`
+    ];
+
+    addNews(messages[Math.floor(Math.random() * messages.length)]);
+    updateUI();
+}
+
 // Evil Actions
 function raiseRents() {
     if (gameState.tenants === 0) return;
+
+    const now = Date.now();
+    const cooldown = 30000; // 30 second cooldown
+
+    if (now - gameState.cooldowns.raiseRents < cooldown) {
+        return; // Still on cooldown
+    }
 
     const increase = gameState.tenants * 50;
     gameState.money += increase;
     gameState.political += 5;
     gameState.moral -= 3;
     gameState.actionsPerformed.rentRaises++;
+    gameState.cooldowns.raiseRents = now;
 
     addNews(`Rent increased across all properties. Tenants tighten budgets. You gain $${increase}.`);
     updateUI();
@@ -330,8 +412,16 @@ function ignoreStandards() {
 function bullshitFees() {
     if (gameState.tenants === 0) return;
 
+    const now = Date.now();
+    const cooldown = 45000; // 45 second cooldown
+
+    if (now - gameState.cooldowns.bullshitFees < cooldown) {
+        return; // Still on cooldown
+    }
+
     gameState.money += 2000;
     gameState.moral -= 5;
+    gameState.cooldowns.bullshitFees = now;
 
     const fees = [
         "\"Administrative processing fee\"",
@@ -390,8 +480,16 @@ function subdivide() {
 function demandPetBond() {
     if (gameState.tenants === 0) return;
 
+    const now = Date.now();
+    const cooldown = 60000; // 60 second cooldown
+
+    if (now - gameState.cooldowns.petBond < cooldown) {
+        return; // Still on cooldown
+    }
+
     gameState.money += 3000;
     gameState.moral -= 5;
+    gameState.cooldowns.petBond = now;
 
     const petTypes = ["goldfish", "hamster", "budgie", "cat that visits sometimes"];
     const randomPet = petTypes[Math.floor(Math.random() * petTypes.length)];
@@ -528,14 +626,27 @@ function loadGame() {
         Object.assign(gameState, loaded);
         gameState.lastUpdate = Date.now(); // Reset timer
 
-        // Migration: Fix old saves that started with $0
+        // Migration: Fix old saves from before the new starting state
         const totalProperties = Object.values(gameState.properties).reduce((sum, prop) => sum + prop.count, 0);
-        if (gameState.money < 1000 && totalProperties === 0) {
-            gameState.money = 50000;
-            addNews('🎁 SYSTEM UPDATE: Starting funds adjusted to $50,000. The game is now playable!');
-        } else {
-            addNews('Game loaded. Welcome back, slumlord.');
+        if (totalProperties === 0) {
+            // Old save with no properties - give them 3 Mouldy Flats
+            gameState.properties.moldyFlat.count = 3;
+            gameState.properties.moldyFlat.cost = 66125;
+            gameState.money = 0;
+            addNews('🎁 SYSTEM UPDATE: You now start with 3 Mouldy Flats! Game rebalanced for better pacing.');
         }
+
+        // Ensure cooldowns object exists for old saves
+        if (!gameState.cooldowns) {
+            gameState.cooldowns = {
+                collectRent: 0,
+                raiseRents: 0,
+                bullshitFees: 0,
+                petBond: 0
+            };
+        }
+
+        addNews('Game loaded. Welcome back, slumlord.');
     }
 }
 
@@ -588,6 +699,9 @@ Play at: [Your URL Here]
 
 // Event Listeners
 function setupEventListeners() {
+    // Active Rent Collection
+    document.getElementById('collect-rent').addEventListener('click', collectRent);
+
     // Properties
     document.getElementById('buy-moldy-flat').addEventListener('click', () => buyProperty('moldyFlat'));
     document.getElementById('buy-shitbox').addEventListener('click', () => buyProperty('shitbox'));
