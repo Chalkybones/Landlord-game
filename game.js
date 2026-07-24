@@ -1203,6 +1203,19 @@ function modalOffline(earned, hrs){
     `, [{ label:'Excellent', cls:'primary', fn:()=> closeModal() }]);
 }
 
+function modalIntro(){
+    showModal(`
+        <div class="modal-kicker">🎮 A satirical idle game · not investment advice</div>
+        <h1>Kiwi Landlord Empire</h1>
+        <p style="font-size:1.05em;">A satire of Aotearoa's housing crisis, played through <b>PortfolioMax™</b> — a cheerful investor dashboard that reports human misery as good news.</p>
+        <p><b>You're the landlord.</b> Buy up homes, squeeze your tenants, and launder your reputation through politics until you're appointed <b>Minister of Housing</b> — all before Public Scrutiny redlines and the exposé ends your run.</p>
+        <p style="color:var(--muted);font-size:.9em;">Everything in here is real — the policies, the numbers, the 7 November election. The only fictional part is you. (Well. Hopefully.)</p>
+    `, [
+        { label:'How to play', cls:'ghost', fn:()=> modalHelp() },
+        { label:'Start squeezing →', cls:'primary', fn:()=> closeModal() },
+    ]);
+}
+
 function modalHelp(){
     showModal(`
         <div class="modal-kicker">How to build an empire</div>
@@ -1377,6 +1390,7 @@ function setupEvents(){
     $('prestige-btn').addEventListener('click', doPrestige);
     $('mute-btn').addEventListener('click', toggleMute);
     $('help-btn').addEventListener('click', modalHelp);
+    const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     $('modal-overlay').addEventListener('click', (e)=>{
         if (e.target === $('modal-overlay') && !state.ended) closeModal();
     });
@@ -1399,7 +1413,7 @@ function init(){
     setInterval(()=> saveGame(true), 20000);
     window.addEventListener('beforeunload', ()=> saveGame(true));
 
-    if (!had) setTimeout(modalHelp, 600);
+    if (!had) setTimeout(modalIntro, 400);
 }
 
 init();
