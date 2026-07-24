@@ -237,8 +237,9 @@ const HEAT_TIERS = [
 ];
 
 /* ------------------------------------------------------------- TENANT PIECES */
-const T_FIRST = ['Aroha','Wiremu','Mereana','Josh','Kirsty','Tama','Ana','Dylan','Sina','Manaia','Charlotte','Rangi','Priya','Beau','Hine','Cody','Fetu','Grace','Nikau','Chloe','Ropata','Sam','Moana','Kane','Anika','Tané'];
-const T_LAST  = ['Ngata','Williams','Patel','Tuilagi','Thompson','Rewiti','Chen','O\'Brien','Faleolo','Harris','Whitcombe','Kaur','Mafi','Baker','Wallace','Hohepa','Singh','Katoa','Reid','Marsh','Nguyen','Solomona'];
+// A real NZ cross-section — European plurality, plus Māori, Pasifika, Asian & Indian names, mixed freely.
+const T_FIRST = ['James','Emma','Jack','Olivia','Liam','Sophie','Ben','Grace','Sam','Ella','Josh','Kate','Ryan','Chloe','Dan','Hannah','Matt','Lucy','Tom','Amy','Connor','Georgia','Zoe','Nathan','Holly','Aaron','Bridget','Scott','Paige','Cam','Megan','Luke','Aroha','Wiremu','Manaia','Hine','Nikau','Rangi','Sione','Sina','Mele','Fetu','Priya','Raj','Mei','Anika'];
+const T_LAST  = ['Smith','Wilson','Taylor','Brown','Walker','Thompson','Wright','Baker','Harris','Clark','Robinson','Scott','Murphy','O\'Brien','Reid','Marsh','Cooper','Bennett','Hughes','Fraser','Ellis','Gray','Doyle','Nolan','Stewart','Webb','Ngata','Williams','Hohepa','Rewiti','Waititi','Faleolo','Tuilagi','Solomona','Patel','Singh','Kaur','Chen','Nguyen'];
 const T_JOB = [
     'ED nurse, night shifts','Primary school teacher','Supermarket 2IC','Barista + Uber, both',
     'Aged-care worker','Apprentice sparky','Bus driver','Solo mum, two kids','Three uni students (a "flat")',
@@ -246,20 +247,34 @@ const T_JOB = [
     'Council parks crew','Beneficiary + part-time','Truckie, long-haul','Kōhanga reo kaiako','Early-childhood teacher',
 ];
 const T_SITUATION = [
-    'Their flatmate left for Brisbane; now they cover the whole $__ alone.',
-    'Rent finally dropped $20 — the flat is still cold, still damp, now emptier.',
-    'On the Kāinga Ora "Priority One" list for 3 years. Their number is still four digits.',
-    'The Winter Energy Payment lasts nine days. The single lounge heat pump does the rest, poorly.',
-    'Pays $__ for a "consent-free minor dwelling" — a shed with ambitions.',
+    'Their flatmate left for Brisbane; now they cover the whole rent alone.',
+    'Rents are "falling" nationwide — somehow not here. Still cold, still damp.',
+    'On the Kāinga Ora "Priority One" list for three years. Their number is still four digits.',
+    'The Winter Energy Payment lasts nine days. One lounge heat pump does the rest, poorly.',
+    'Lives in a "consent-free minor dwelling" — a shed with ambitions and a power bill.',
     'Heat pump died in June. You replied in spring: "have you tried the Winter Energy Payment?"',
     'Third flat in two years. Every landlord "needed it for family."',
     'Charged a "tenancy administration contribution." That\'s a letting fee. Those are illegal. Apparently it\'s "admin."',
     'The kids share a room with the dehumidifier. It has the best mattress.',
     'Applied against 40 others for this damp one-bed and "won." The prize is the damp one-bed.',
-    'Combined income $180k. Bank lends them 6×; the house costs 11×. The gap is officially called "patience."',
-    'Got a two-week pet bond for a budgie. The budgie now has stronger tenancy rights than they do.',
+    'The bank lends them 6× income for a house that costs 11×. The gap is officially called "patience."',
+    'Paid a two-week pet bond for a budgie. The budgie now has stronger tenancy rights than they do.',
     'Wrote you a lovely email about the mould. You screenshotted it to your accountant.',
     'Priced out to Papakura; commutes 90 minutes each way to the job still stuck in town.',
+    'Keeps the oven on with the door open for warmth. Cheaper than the heat pump you won\'t fix.',
+    'Saved a deposit for six years. The market saved harder.',
+    'Every inspection, they tidy for a stranger who notes "tenant appears to live here."',
+    'Splits a two-bed with three others found in a Facebook group called "Wellington Rooms."',
+    'The landlord\'s LinkedIn says "providing homes for Kiwis." Their bathroom says otherwise.',
+    'Asked, politely, for the mould to be fixed. Got a rent review instead.',
+    'Works two jobs to make rent on a flat with one working power point.',
+    'The letting agent called it "cosy." The thermometer calls it "a fridge."',
+    'Moved cities for cheaper rent. The rent followed, like a debt with a car.',
+    'Their bond has been "under review" for five months. So has their patience.',
+    'Told the flat was "warm and dry." It is legally required to be neither.',
+    'Puts a towel under the door to keep the draught out and the damp in.',
+    '"So lucky to get" a garage conversion with a curtain for a fourth wall.',
+    'Rent went up again. Wages sent their apologies.',
 ];
 
 /* ------------------------------------------------------------------- HEADLINES */
@@ -755,8 +770,10 @@ function meetsNeed(need){
 function makeTenant(){
     const first = pick(T_FIRST), last = pick(T_LAST);
     const rent = 420 + Math.floor(Math.random()*10)*35;
-    const sit = pick(T_SITUATION).replace('$__', '$'+rent);
-    return { name:`${first} ${last}`, job:pick(T_JOB), rent, strain: 20 + Math.floor(Math.random()*28), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳']) };
+    const used = (state.featured||[]).map(t=>t && t.situation);
+    let sit, tries = 0;
+    do { sit = pick(T_SITUATION); tries++; } while (used.indexOf(sit) !== -1 && tries < 12);
+    return { name:`${first} ${last}`, job:pick(T_JOB), rent, strain: 16 + Math.floor(Math.random()*24), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳','👴']) };
 }
 function syncTenants(){
     state.tenants = baseTenants();
@@ -786,13 +803,13 @@ function renderTenants(){
                 </div>
             </div>
             <div class="tenant-situation">${t.situation}</div>
-            <div class="tenant-rent">Rent: <span class="rent-num">${money(t.rent)}/wk</span></div>
+            <div class="tenant-rent">Rent <span class="rent-num">${money(t.rent)}/wk</span></div>
+            <div class="strain-row"><span class="strain-cap">Can they afford it?</span><span class="strain-label" data-strainlabel></span></div>
             <div class="strain-meter"><div class="strain-fill" data-strain></div></div>
-            <div class="strain-label" data-strainlabel></div>
-            <button class="tenant-btn" data-squeeze>Raise their rent 💢</button>`;
+            <button class="tenant-btn" data-squeeze>Raise the rent 💢</button>`;
         wrap.appendChild(card);
         card.querySelector('[data-squeeze]').addEventListener('click', (e)=> squeezeTenant(idx, e));
-        card.querySelector('[data-strain]').style.width = t.strain + '%';
+        card.querySelector('[data-strain]').style.width = clamp(t.strain,0,100) + '%';
         card.querySelector('[data-strainlabel]').textContent = strainWord(t.strain);
     });
 }
@@ -800,18 +817,25 @@ function updateTenantStrain(){
     const cards = $('tenant-cards').querySelectorAll('.tenant-card');
     cards.forEach((c, i)=>{
         const t = state.featured[i]; if (!t) return;
+        if (c.classList.contains('left')) return;   // a departing tenant's card is mid-animation
         const bar = c.querySelector('[data-strain]');
         if (bar) bar.style.width = clamp(t.strain,0,100) + '%';
         const lbl = c.querySelector('[data-strainlabel]');
         if (lbl) lbl.textContent = strainWord(t.strain);
+        const btn = c.querySelector('[data-squeeze]');
+        if (btn){
+            const near = t.strain >= 74;
+            btn.classList.toggle('danger', near);
+            btn.textContent = near ? '⚠ Push it anyway' : 'Raise the rent 💢';
+        }
     });
 }
 function strainWord(s){
-    if (s >= 92) return 'At breaking point';
-    if (s >= 70) return 'Struggling badly';
-    if (s >= 45) return 'Feeling the squeeze';
-    if (s >= 20) return 'Just coping';
-    return 'Holding on';
+    if (s >= 90) return 'No — about to leave';
+    if (s >= 70) return 'Barely, and not for long';
+    if (s >= 45) return 'Only just';
+    if (s >= 22) return 'For now';
+    return 'Comfortably';
 }
 
 /* =============================================================== ACTIONS */
@@ -911,45 +935,61 @@ function sellTopProperty(atCost){
     return cashOut;
 }
 
+/* a tenant leaves: show a clear on-card "moved out" moment, apply any cost/heat,
+   then a new household moves in. This is the ONLY way featured tenants disappear,
+   so it's always obvious why. */
+function tenantExits(idx, title, newsText, opts){
+    opts = opts || {};
+    const t = state.featured[idx]; if (!t) return;
+    const card = $('tenant-cards').children[idx];
+    if (card){
+        card.classList.add('left');
+        const ov = document.createElement('div');
+        ov.className = 'tenant-gone';
+        ov.innerHTML = `<div class="gone-title">${title}</div><div class="gone-name">${t.name} moved out</div><div class="gone-sub">${t.job}</div>`;
+        card.appendChild(ov);
+    }
+    if (opts.cost) state.money -= opts.cost;
+    if (opts.heat) addHeat(opts.heat * multipliers().heatGen);
+    if (opts.toast) toast(opts.toast, 'bad');
+    if (newsText) addNews(newsText, 'bad');
+    blip(150);
+    setTimeout(()=>{ state.featured[idx] = makeTenant(); renderTenants(); refresh(); }, 1600);
+    refresh();
+}
+
 function evictSomeone(){
     if (state.featured.length === 0) return;
     const idx = Math.floor(Math.random()*state.featured.length);
     const t = state.featured[idx];
-    const card = $('tenant-cards').children[idx];
-    if (card) card.classList.add('breaking');
-    addNews(`${t.name} (${t.job}) — evicted. Boxes on the verge, kids in the car, a fresh listing already live at +18%.`, 'bad');
-    state.featured[idx] = makeTenant();
-    setTimeout(renderTenants, 260);
+    tenantExits(idx, 'Evicted · 90-day notice',
+        `${t.name} (${t.job}) served a 90-day no-cause notice — no reason required. Re-let at market by Friday.`,
+        { toast: `${t.name} evicted — no reason required. That's the product.` });
 }
 
 function squeezeTenant(idx, e){
     const t = state.featured[idx]; if (!t) return;
-    const bump = 25 + Math.floor(Math.random()*30);
-    t.rent += bump; t.strain = clamp(t.strain + 18 + Math.floor(Math.random()*14), 0, 100);
-    state.money += bump * 4 + grossRentWeekly() * 0.2;
+    const card = $('tenant-cards').children[idx];
+    if (card && card.classList.contains('left')) return;  // already leaving
+
+    const bump = 20 + Math.floor(Math.random()*25);
+    t.rent += bump;
+    t.strain = clamp(t.strain + 24 + Math.floor(Math.random()*8), 0, 100);
+    state.money += bump * 6;               // the back-rent you just extracted
+    state.rentMultBonus += 0.003;          // squeezing individuals nudges your whole rent roll up
     state.rentRaises++;
-    fx('+'+money(bump*4 + grossRentWeekly()*0.2), 'pos', e);
-    addHeat(3 * multipliers().heatGen, e);
+    fx('+'+money(bump*6), 'pos', e);
+    addHeat(4 * multipliers().heatGen, e);
     blip(220);
+    if (card){ const rn = card.querySelector('.rent-num'); if (rn) rn.textContent = money(t.rent) + '/wk'; }
 
     if (t.strain >= 100){
-        if (Math.random() < 0.25){
-            addNews(`${t.name} somehow made rent — took a third job and stopped answering the door. You call this "resilience."`, 'bad');
-            t.strain = 82; renderTenants();
-        } else {
-            state.evictions++;
-            state.money += Math.max(4000, grossRentWeekly()*0.8);
-            addHeat(10 * multipliers().heatGen, e);
-            const card = $('tenant-cards').children[idx];
-            if (card) card.classList.add('breaking');
-            addNews(`${t.name} couldn't keep up. Evicted, re-let same week at market. The Minister files it under "supply."`, 'bad');
-            state.featured[idx] = makeTenant();
-            setTimeout(renderTenants, 260);
-        }
-    } else {
-        addNews(`Rent raised on ${t.name.split(' ')[0]} by ${money(bump)}/wk. "Market adjustment," you explain to no one who asked.`, 'bad');
-        renderTenants();
+        tenantExits(idx, 'Priced out',
+            `${t.name} (${t.job}) couldn't make the new rent and moved on. A void, a re-let, a fresh listing at +12%.`,
+            { cost: 2500 + state.tenants*90, heat: 8, toast: `${t.name} was priced out — moved on. Voids and re-lets aren't free.` });
+        return;
     }
+    addNews(`Rent raised on ${t.name.split(' ')[0]} by ${money(bump)}/wk. "A modest market adjustment," you tell no one who asked.`, 'bad');
     refresh();
 }
 
@@ -1002,7 +1042,6 @@ function onWeek(){
     const m = multipliers();
     state.heat = clamp(state.heat - m.heatDecay, 0, CFG.HEAT_MAX);
     state.marketIndex *= (1 + CFG.APPRECIATION/52);   // steady appreciation
-    state.featured.forEach(t=>{ t.strain = clamp(t.strain + (Math.random()<0.5?0.4:0), 0, 100); });
 
     const nowS = now()/1000;
     if (nowS - (state._lastNews||0) > CFG.NEWS_COOLDOWN && Math.random() < 0.3){
