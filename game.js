@@ -1222,7 +1222,7 @@ function modalHelp(){
         <h1>The loop 🔁</h1>
         <p><b>1. Buy on leverage.</b> You don't pay cash for houses — you put down a <b>deposit</b> (investors ~35%) and the bank lends the rest as a mortgage. The debt costs weekly interest, so cheap provincial stock earns, while Auckland &amp; prestige homes <span style="color:var(--red-dark)">bleed cash</span> — you buy those for the capital gain.</p>
         <p><b>2. The bank is the game.</b> It lends up to <b>7× your income</b>, counting ~78% of your rent — so every rent rise unlocks more borrowing. (A first-home buyer gets 6× and counts none of it. That's the joke, and the mechanic.) New builds dodge the limits entirely.</p>
-        <p><b>3. Squeeze (Operations).</b> Raise rents and invent fees for cash — and borrowing power. Every squeeze raises <span style="color:#b25a15;font-weight:700">Scrutiny</span>.</p>
+        <p><b>3. Squeeze (the 💸 Squeeze tab).</b> Raise rents and invent fees for cash — and borrowing power. Every squeeze raises <span style="color:#b25a15;font-weight:700">Scrutiny</span>.</p>
         <p><b>4. Buy Influence (Politics) &amp; Retain Services.</b> Turn cash into political capital to spike stories and rewrite the rules. Watch the OCR — a rate hike lifts everyone's mortgage and can trigger the <b>Market Correction</b>.</p>
     `, [{ label:'Let\'s ruin some lives', cls:'primary', fn:()=> closeModal() }]);
 }
@@ -1360,6 +1360,11 @@ function setupEvents(){
             tab.classList.add('active');
             document.querySelector(`.tab-panel[data-panel="${tab.dataset.tab}"]`).classList.add('active');
             if (tab.dataset.tab === 'news'){ state._unread = 0; const b = tab.querySelector('.badge'); if (b) b.remove(); }
+            // on phones, jump to the freshly-selected content (bottom-bar nav)
+            if (window.innerWidth <= 700){
+                const body = document.querySelector('.tab-body');
+                if (body){ const y = body.getBoundingClientRect().top + window.scrollY - 6; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); }
+            }
         });
     });
     document.querySelectorAll('.speed-btn').forEach(b=> b.addEventListener('click', ()=> setSpeed(parseInt(b.dataset.speed))));
