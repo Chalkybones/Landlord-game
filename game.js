@@ -1206,13 +1206,13 @@ function modalOffline(earned, hrs){
 
 function modalIntro(){
     showModal(`
-        <div class="modal-kicker">🎮 A satirical idle game · not investment advice</div>
-        <h1>Kiwi Landlord Empire</h1>
-        <p style="font-size:1.05em;">A satire of Aotearoa's housing crisis, played through <b>PortfolioMax™</b> — a cheerful investor dashboard that reports human misery as good news.</p>
-        <p><b>You're the landlord.</b> Put down a deposit, let the bank lend you the rest, squeeze your tenants, and launder your reputation through politics until you're appointed <b>Minister of Housing</b> — before Public Scrutiny redlines and the exposé ends your run.</p>
-        <p style="color:var(--muted);font-size:.9em;">Everything in here is real — the prices, the lending rules, the 7 November election. The only fictional part is you. (Well. Hopefully.)</p>
+        <div class="modal-kicker">PortfolioMax™ · New investor onboarding</div>
+        <h1>Welcome aboard 🏠</h1>
+        <p style="font-size:1.05em;">Congratulations on taking control of your financial future — and, incidentally, a few other people's. Your first deposit is ready. Your tenants are already home.</p>
+        <p>Buy low, rent high, and let the bank carry the risk. Squeeze where you can, donate where it counts, and if a reporter rings, you're "unavailable." Do it well enough and they'll put you in charge of fixing the very thing you're doing.</p>
+        <p style="color:var(--muted);font-size:.9em;">Past performance is a lovely three-bedroom you'll never own. PortfolioMax™ accepts no responsibility for the housing crisis — though we do gratefully accept the rent.</p>
     `, [
-        { label:'How to play', cls:'ghost', fn:()=> modalHelp() },
+        { label:'How does this work?', cls:'ghost', fn:()=> modalHelp() },
         { label:'Start squeezing →', cls:'primary', fn:()=> closeModal() },
     ]);
 }
