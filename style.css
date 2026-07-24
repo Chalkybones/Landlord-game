@@ -200,6 +200,34 @@ body {
 .tab-panel.active { display: block; animation: fadein .2s ease; }
 @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
+/* ---------- Bank strip ---------- */
+.bank-strip {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px 14px;
+    background: linear-gradient(90deg, rgba(224,165,0,.12), rgba(0,133,142,.06));
+    border: 1px solid var(--line); border-left: 4px solid var(--gold); border-radius: 12px;
+}
+.bank-icon { font-size: 1.5em; flex-shrink: 0; }
+.bank-text { flex: 1; min-width: 0; }
+.bank-line { font-weight: 800; font-size: 1em; color: var(--teal-ink); }
+.bank-sub { font-size: .78em; color: var(--muted); margin-top: 1px; }
+.bank-sub.bank-satire { color: var(--red-dark); font-weight: 600; }
+.bank-release {
+    flex-shrink: 0; padding: 9px 14px; border: 1px solid var(--gold-dark); background: #fff; color: var(--gold-dark);
+    border-radius: 9px; font-weight: 700; font-size: .84em; cursor: pointer; transition: all .12s;
+}
+.bank-release:hover:not(:disabled) { background: var(--gold); color: #3a2b00; }
+.bank-release:disabled { opacity: .5; cursor: not-allowed; }
+.nb-badge {
+    font-size: .6em; font-weight: 800; letter-spacing: .05em; vertical-align: middle;
+    background: var(--green); color: #fff; padding: 2px 6px; border-radius: 6px; margin-left: 4px;
+}
+.cf-pos { color: var(--green); }
+.cf-neg { color: var(--red); }
+@media (max-width: 560px) {
+    .bank-strip { flex-wrap: wrap; }
+    .bank-release { width: 100%; }
+}
+
 /* ---------- Card list (properties / services) ---------- */
 .card-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .buy-card {

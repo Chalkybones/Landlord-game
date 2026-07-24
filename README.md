@@ -10,11 +10,13 @@ You play a property investor building a rental empire on the "PortfolioMax™" p
 
 ## 🔁 The Loop (this is the game, and the joke)
 
-> **Squeeze tenants → cash → buy political influence → suppress scrutiny & deregulate → squeeze harder.**
+> **Deposit + mortgage → squeeze tenants → cash & borrowing power → buy political influence → suppress scrutiny & deregulate → leverage up and squeeze harder.**
 
-Wealth buys the political immunity that lets the extraction escalate. That's not a bug in the design — it's the argument.
+Wealth buys the political immunity that lets the extraction escalate — and the bank buys you the homes a first-home buyer will never be lent. That's not a bug in the design; it's the argument.
 
-- **Acquire property.** Passive rent is your base. Every purchase quietly removes a home from the market.
+- **Buy on leverage, like real landlords do.** You don't pay cash for houses — you put down a **deposit** (investors ~35%) and the bank lends the rest as a **mortgage**. The debt costs weekly interest, so cheap provincial stock earns while Auckland and prestige homes bleed cash (you buy those for the capital gain). Prices, rents, LVR/DTI limits, the OCR and the 7 November election are all modelled on real 2026 Aotearoa.
+- **The bank is the mechanic *and* the satire.** It lends up to **7× your income**, counting ~78% of your rent — so every rent rise unlocks more borrowing. A first-home buyer gets 6× and counts none of it. New builds dodge the deposit and debt limits entirely. Watch the OCR: a rate hike lifts everyone's mortgage and can trigger the Market Correction.
+- **Acquire property.** Rent is your base. Every purchase quietly removes a home from the market.
 - **Optimise (Operations).** Raise rents, invent fees, ignore Healthy Homes, evict without cause. Each earns cash — and raises **Public Scrutiny**, the heat meter up top.
 - **Buy Influence (Politics).** Turn cash into political capital, then spend it to *Spike the Story* and cool your scrutiny before it boils over.
 - **Retain Services.** Permanent upgrades that let you squeeze harder for less heat — the Meth-Test Grift Kit, the Accommodation-Supplement Harvester, the Astroturf Renters' Group, the Family Trust Restructure.

@@ -2,61 +2,81 @@
    KIWI LANDLORD EMPIRE  —  "PortfolioMax™"   (Election Year Edition, 2026)
    A satire of Aotearoa's housing crisis.
 
-   The loop:  squeeze tenants -> cash -> buy influence -> suppress scrutiny
-              & deregulate -> squeeze harder.  Wealth buys the immunity that
-              lets the extraction escalate. That's the joke. It's also the game.
+   The loop:  deposit + mortgage -> squeeze tenants -> cash + borrowing power
+              -> buy influence -> suppress scrutiny & deregulate -> leverage up
+              and squeeze harder.  Wealth buys the political immunity — and the
+              bank buys you the homes a first-home buyer will never be lent.
 
-   Content is current to mid-2026: the OCR whiplash, rents falling because
-   everyone left for Brisbane, the golden-visa reversal, consent-free granny
-   flats, the Kāinga Ora selloff, pet bonds, "Landlord Parliament", the
-   7 November election. Everything is data-driven — add to the tables below.
+   Property is financed the way it really is in NZ 2026: an investor deposit
+   (~35%), a mortgage on the rest, weekly interest, and a bank that will lend
+   you up to 7× income (counting ~78% of your rent) — while it lends a nurse
+   6× and counts none of hers. Prices, rents, LVR/DTI, the OCR and the
+   7 November election are all real. Everything is data-driven.
    ========================================================================== */
 
 'use strict';
 
 /* ------------------------------------------------------------------ CONFIG */
 const CFG = {
-    START_CASH: 50000,
+    START_CASH: 145000,        // a real investor deposit — however you scraped it (most can't)
+    BASE_INCOME: 108000,       // your household salary, for the bank's DTI test
     DEFAULT_SPEED: 5,          // real seconds per in-game week
     BASE_HEAT_DECAY: 2.5,      // scrutiny lost per week with no help
     HEAT_MAX: 100,
     OFFLINE_CAP_HOURS: 8,
-    NEWS_COOLDOWN: 8,          // min real seconds between random headlines
-    EVENT_COOLDOWN: 6,         // min real seconds between random events
-    SAVE_KEY: 'kiwiLandlordEmpire_v1',
+    NEWS_COOLDOWN: 8,
+    EVENT_COOLDOWN: 6,
+    SAVE_KEY: 'kiwiLandlordEmpire_v2',
     LEGACY_BONUS: 0.15,        // +15% permanent rent per Restructure
+    // --- the bank ---
+    DTI: 7,                    // investors: borrow up to 7× income (owner-occupiers get 6×)
+    LVR_CAP: 0.75,             // can't owe more than 75% of portfolio value
+    RENT_SHADE: 0.78,          // bank counts ~78% of gross rent as income
+    MORTGAGE_RATE: 0.055,      // starting interest rate; moves with the OCR
+    RATE_MIN: 0.04, RATE_MAX: 0.095,
+    APPRECIATION: 0.05,        // ~5%/yr market drift (before events)
 };
 
 /* ---------------------------------------------------------------- PROPERTIES
-   The clicker backbone. Cheap early, unlocks come fast, curve stays smooth. */
+   Real 2026 prices & rents. Buy with a deposit; the bank lends the rest.
+   deposit = fraction paid in cash.  costRate = holding costs (rates, insurance,
+   body corp, mgmt) as a fraction of gross rent.  newBuild = LVR/DTI-exempt. */
 const PROPERTIES = [
-    { id:'moldyFlat',  emoji:'🍄', name:'Mouldy Studio Flat',        cost:14000,     income:180,   units:1,  mult:1.13, unlock:0,
-      desc:'"Warm and dry," says the listing — a phrase now legally required and freely ignored. The warmth is the mould\'s.' },
-    { id:'exState',    emoji:'🏚️', name:'Ex–Kāinga Ora State House', cost:60000,     income:560,   units:1,  mult:1.15, unlock:3,
-      desc:'KO is selling ~900 state homes a year since the Bill English review. You bought one and tripled the rent. Public asset, private yield.' },
-    { id:'leaky',      emoji:'💧', name:"Leaky Building 'Opportunity'", cost:260000,  income:1700,  units:3,  mult:1.16, unlock:6,
-      desc:'The body corporate is at war and the cladding is a crime scene. Brightline\'s two years now, so you can flip it before the rot votes.' },
-    { id:'sausage',    emoji:'🌭', name:'Granny-Flat Sausage Block',  cost:850000,    income:4600,  units:6,  mult:1.18, unlock:10,
-      desc:'70m² of consent-free "minor dwelling" per backyard, no council, no questions, since 15 Jan 2026. Six of them where a lawn used to be.' },
-    { id:'shoebox',    emoji:'📦', name:'CBD Shoebox Apartments',    cost:2600000,   income:12000, units:12, mult:1.20, unlock:15,
-      desc:'12m², no window, "vibrant inner-city lifestyle." MDRS is optional now, so the density is entirely your own idea.' },
-    { id:'block',      emoji:'🏢', name:'Entire Apartment Block',    cost:8500000,   income:34000, units:30, mult:1.22, unlock:22,
-      desc:'You are now the whole street. Residents call it home; the spreadsheet calls it stock; the RMA replacement calls it "enabled."' },
-    { id:'retirement', emoji:'👵', name:'Retirement Village',        cost:30000000,  income:110000,units:80, mult:1.24, unlock:32,
-      desc:'Deferred management fees: you keep a cut of the resale of a home they never owned, forever. The last legal perpetual-motion machine.' },
+    { id:'studio', emoji:'🏢', name:'Leasehold CBD Studio', price:130000, rent:340, units:1, mult:1.05,
+      deposit:0.35, costRate:0.55, growth:0.01, unlock:0,
+      desc:'You don\'t own the land — just the right to pay ground rent on it forever. Cheap for a reason; the body corp is the reason.' },
+    { id:'doup', emoji:'🔨', name:'Provincial Do-Up', price:380000, rent:440, units:1, mult:1.06,
+      deposit:0.35, costRate:0.30, growth:0.04, unlock:2,
+      desc:'An Invercargill three-bed with "loads of potential" and one working power point. Cash-flow positive — nobody else is bidding.' },
+    { id:'exState', emoji:'🏚️', name:'Ex–Kāinga Ora State House', price:720000, rent:700, units:1, mult:1.07,
+      deposit:0.35, costRate:0.30, growth:0.045, unlock:4,
+      desc:'KO\'s offloading ~900 a year since the Bill English review. You bought a public asset and privatised the rent.' },
+    { id:'leaky', emoji:'💧', name:'Leaky 3-Flat Block', price:950000, rent:1560, units:3, mult:1.08,
+      deposit:0.35, costRate:0.38, growth:0.03, unlock:7,
+      desc:'Monolithic cladding, a body corp at war, ~9% off comparable. Three tenancies who won\'t know until it rains indoors. The yield, though.' },
+    { id:'auck', emoji:'🏠', name:'Auckland Fringe 3-Bed', price:1050000, rent:760, units:1, mult:1.08,
+      deposit:0.35, costRate:0.30, growth:0.055, unlock:10,
+      desc:'Bleeds cash every week and you buy it anyway — this one\'s a bet on the capital gain, not the rent. Negative gearing, restored to full tax-deductibility.' },
+    { id:'townhouse', emoji:'🏘️', name:'New-Build Townhouse Row', price:2400000, rent:2360, units:4, mult:1.09,
+      deposit:0.15, costRate:0.28, growth:0.035, unlock:14, newBuild:true,
+      desc:'Four sausage flats where a villa\'s lawn used to be. New build, so the bank waves the deposit AND the DTI limit — 15% down, the rules don\'t apply.' },
+    { id:'prestige', emoji:'🥂', name:'Remuera Prestige Land-Bank', price:3600000, rent:1900, units:1, mult:1.10,
+      deposit:0.35, costRate:0.30, growth:0.065, unlock:18,
+      desc:'A trophy that yields almost nothing and appreciates like a rocket. You\'re not a landlord here, you\'re a land-banker with a tenant for cover.' },
+    { id:'block', emoji:'🏢', name:'Entire Apartment Block', price:22000000, rent:26000, units:40, mult:1.12,
+      deposit:0.35, costRate:0.30, growth:0.04, unlock:24,
+      desc:'You are now the whole building. Forty tenancies call it home; the spreadsheet calls it stock; the RMA replacement calls it "enabled."' },
 ];
 
-/* ---------------------------------------------------------------- OPERATIONS
-   Active "revenue optimisation." Each trades a little Scrutiny for cash.
-   money: function(state, m) -> $ gained now. rentBoost: permanent rent × add. */
+/* ---------------------------------------------------------------- OPERATIONS */
 const OPERATIONS = [
     { id:'optimiseRent', emoji:'📈', name:'Optimise Rents', heat:6, needTenants:true,
-      desc:'A modest, market-aligned adjustment — even as national rents fall, because your tenants can\'t all move to Brisbane at once.',
+      desc:'A modest, market-aligned adjustment — even as national rents fall, because your tenants can\'t all move to Brisbane at once. (Also lifts your borrowing power.)',
       rentBoost:0.025, strain:14,
       news:s => `Rents "optimised" while the market drops. Asked how, you cite "costs." Yours. Emotional ones.` },
 
     { id:'inventFee', emoji:'🧾', name:'Invent a Fee', heat:3, needTenants:true,
-      money:(s,m)=> Math.max(3000, weeklyIncome()*0.9),
+      money:(s,m)=> Math.max(3000, grossRentWeekly()*0.9),
       desc:'Letting fees have been illegal since 2018, so this is a "tenancy administration contribution" — which is different, because you renamed it.',
       news:s => { const f=pick(FEES); return `New charge introduced: ${f}. Legally grey, morally charcoal, financially excellent.`; } },
 
@@ -66,12 +86,12 @@ const OPERATIONS = [
       news:s => `Healthy Homes deadline treated as a strong suggestion. Mould reclassified as "a natural feature of the character home."` },
 
     { id:'noCause', emoji:'📜', name:'90-Day No-Cause Eviction', heat:14, needTenants:true, heatKey:'tribunal', infl:4,
-      money:(s,m)=> Math.max(8000, weeklyIncome()*1.5), evicts:true,
+      money:(s,m)=> Math.max(8000, grossRentWeekly()*1.5), evicts:true,
       desc:'No-cause terminations came back on 30 Jan 2025 — "open season on renters," said Renters United. No reason required. That\'s the product.',
       news:s => `Tenant requests a repair, receives a 90-day no-cause notice instead. Re-let same day at market. The Minister files it under "supply."` },
 
     { id:'airbnb', emoji:'🧳', name:'Convert to Airbnb', heat:11, needTenants:true, cost:5000,
-      money:(s,m)=> weeklyIncome()*2.2 + 10000, removesHousehold:true,
+      money:(s,m)=> grossRentWeekly()*2.2 + 10000, removesHousehold:true,
       desc:'Housing a tourist three nights beats housing a nurse three years. The maths is the maths — and the maths just left for the Gold Coast.',
       news:s => `Long-term rental flipped to short-stay. A family of four replaced by a bucks\' party from Ballarat. Five stars, would evict again.` },
 
@@ -92,17 +112,16 @@ const OPERATIONS = [
 
     { id:'overseas', emoji:'🌏', name:'Sell to a Golden-Visa Buyer', heat:6, infl:8, needProperty:2,
       sellTop:2.2,
-      desc:'The foreign-buyer ban was part-lifted in early 2026: Active Investor Plus migrants may buy $5m+ homes. ~40% are Americans wanting a "Plan B."',
+      desc:'The foreign-buyer ban was part-lifted in early 2026: Active Investor Plus migrants may buy $5m+ homes. ~40% are Americans wanting a "Plan B." Clears the mortgage and banks the gain.',
       news:s => `$5m villa sold to an offshore investor-migrant as a doomsday bunker. It stays dark. Spain scrapped its golden visa over this; we mailed ours a fruit basket.` },
 
     // Redemption path — appears only while your hands are relatively clean.
     { id:'sellFHB', emoji:'🕊️', name:'Sell to the Tenants (at cost)', heat:-18, sellTop:1.0, fhb:true,
       needProperty:2, hideIf:s => s.evictions>0 || heatTier().i>=2,
-      desc:'Sell a home to the family living in it, for what you paid — forgoing the golden-visa premium. You lose yield. They lose the fear.',
+      desc:'Sell a home to the family living in it, for what you paid — forgoing the golden-visa premium. You lose the gain. They lose the fear.',
       news:s => `Landlord sells to sitting tenants at cost. NZPIF calls him "unwell." The tenants call him the best they ever had — a devastating review of everyone else.` },
 ];
 
-/* fee & pet flavour */
 const FEES = [
     '"Tenancy administration contribution" (a letting fee wearing a moustache)',
     '"Healthy Homes compliance levy" (for compliance not performed)',
@@ -111,12 +130,11 @@ const FEES = [
     '"Bond lodgement processing fee" (lodging the bond is the law)',
     '"After-hours maintenance surcharge" (there is no maintenance)',
     '"Rent payment convenience fee" (for the convenience of paying rent)',
-    '"Garden aesthetic levy" (there is no garden)',
+    '"Body corp pass-through premium" (marked up 20%, obviously)',
 ];
 const PETS = ['goldfish','budgie','hamster','tortoise','cat that visits sometimes','elderly, blameless labrador'];
 
-/* ------------------------------------------------------------------ POLITICS
-   Convert cash -> influence, and influence -> less scrutiny / rewritten rules. */
+/* ------------------------------------------------------------------ POLITICS */
 const POLITICS = [
     { id:'donate', emoji:'💰', name:'Donate to a Party', political:true,
       cost:(s)=> 8000 + s.lifetimeInfluence*40, infl:30,
@@ -156,63 +174,51 @@ const POLITICS = [
 
 const PARTIES = ['National (for the tax cuts)','Labour (hedging the CGT)','ACT (for the red-tape bonfire)','NZ First (for the vibes)','whoever wins on 7 November'];
 
-/* ------------------------------------------------------------------ SERVICES
-   Permanent upgrades. Bought once, working forever. The real progression. */
+/* ------------------------------------------------------------------ SERVICES */
 const SERVICES = [
     { id:'propManager', emoji:'👔', name:'Property Manager', cost:40000,
       desc:'They handle the tenants so you never see one. +25% rent — and they invent the fees on your behalf, with a clear conscience they bill you for.',
       tag:'+25% rent' },
-
     { id:'rentAlgo', emoji:'🤖', name:'Rent-Setting Algorithm', cost:280000, need:{phase:1},
       desc:'The algorithm sets every rent to the maximum the data allows. Nobody decided. Nobody\'s responsible. It\'s just the number. +40% rent.',
       tag:'+40% rent' },
-
     { id:'compliance', emoji:'📋', name:'Healthy Homes "Compliance" Consultant', cost:120000,
       desc:'Certifies your compliance with the standards — mandatory since July 2025 — that you are actively ignoring. Halves the heat from ignoring them.',
       tag:'Ignore-standards heat ×0.5' },
-
     { id:'methKit', emoji:'🧪', name:'Meth-Test Concierge', cost:90000,
       desc:'The new meth rules (16 Apr 2026) set the "contaminated" line at 15µg. You test constantly, bill the tenant, and above 30µg you get to evict them too.',
       tag:'+$16/household/wk' },
-
     { id:'accomSupp', emoji:'🏦', name:'Accommodation Supplement Harvester', cost:320000, need:{phase:1},
       desc:'The state spends ~$2b a year topping up the rents you set — so you set them higher. The subsidy lands in your account. Thanks, taxpayer.',
       tag:'+$24/household/wk' },
-
     { id:'tribunal', emoji:'📚', name:'Tenancy Tribunal Season Pass', cost:200000,
       desc:'Frequent-flyer status at the Tribunal. Renters United built a free tool to fight you (TenancyHelp); you built a lawyer on retainer. Guess who wins.',
       tag:'Eviction heat ×0.5' },
-
     { id:'astroturf', emoji:'📣', name:'Astroturf "Renters\' Group"', cost:400000, need:{phase:2},
       desc:'A "grassroots" tenant voice that mysteriously agrees with landlords. The grass is plastic, the roots are yours, the press releases are quarterly.',
       tag:'All heat ×0.75' },
-
     { id:'prFirm', emoji:'📰', name:'PR Crisis Firm on Retainer', cost:550000, need:{phase:2},
       desc:'On call to reframe "slumlord" as "provider of essential services." The news cycle is three days long; they make sure you outlast it.',
       tag:'Scrutiny decays fast' },
-
     { id:'lobbyist', emoji:'📞', name:'Lobbyist on Speed-Dial', cost:800000, need:{phase:3},
       desc:'Your problems become their policy. Every optimisation you perform now also earns political influence. The Planning Bill has your fingerprints, gloved.',
       tag:'Operations grant influence' },
-
     { id:'trust', emoji:'🏛️', name:'Family Trust Restructure', cost:1200000, need:{phase:3},
       desc:'Nothing is technically yours anymore — which is why nothing is technically your fault. Brightline can\'t see you. Unlocks Restructuring.',
       tag:'Unlocks Restructure' },
 ];
 
-/* -------------------------------------------------------------------- PHASES
-   Derived from net worth. Drives the title and the tone. */
+/* -------------------------------------------------------------------- PHASES */
 const PHASES = [
     { min:0,          name:'Generation Rent Refugee' },
-    { min:150000,     name:'Mum & Dad Investor' },
-    { min:900000,     name:'Portfolio Landlord' },
-    { min:4000000,    name:'Property Mogul' },
-    { min:16000000,   name:'Housing Spokesperson' },
-    { min:60000000,   name:'Shadow Housing Minister' },
-    { min:200000000,  name:'The Minister' },
+    { min:250000,     name:'Mum & Dad Investor' },
+    { min:1200000,    name:'Portfolio Landlord' },
+    { min:5000000,    name:'Property Mogul' },
+    { min:20000000,   name:'Housing Spokesperson' },
+    { min:75000000,   name:'Shadow Housing Minister' },
+    { min:250000000,  name:'The Minister' },
 ];
 
-/* --------------------------------------------------------- INFLUENCE TITLES */
 const INFLUENCE_TITLES = [
     { min:0,    name:'Nobody' },
     { min:60,   name:'Local Nuisance' },
@@ -223,8 +229,6 @@ const INFLUENCE_TITLES = [
     { min:3000, name:'Kingmaker' },
 ];
 
-/* ------------------------------------------------------------ SCRUTINY TIERS
-   Higher mins than v1 so early experimentation is safe and fun. */
 const HEAT_TIERS = [
     { min:0,  key:'calm',    trend:"Nobody's watching",  foot:'The press has bigger fish to fry. Squeeze away.' },
     { min:30, key:'noticed', trend:'A few noticing',      foot:'A Reddit thread. A pointed tweet. Nothing you can\'t outspend.' },
@@ -252,14 +256,13 @@ const T_SITUATION = [
     'Charged a "tenancy administration contribution." That\'s a letting fee. Those are illegal. Apparently it\'s "admin."',
     'The kids share a room with the dehumidifier. It has the best mattress.',
     'Applied against 40 others for this damp one-bed and "won." The prize is the damp one-bed.',
-    'Combined income $180k. DTI says borrow 6×; the house costs 11×. The gap is officially called "patience."',
+    'Combined income $180k. Bank lends them 6×; the house costs 11×. The gap is officially called "patience."',
     'Got a two-week pet bond for a budgie. The budgie now has stronger tenancy rights than they do.',
     'Wrote you a lovely email about the mould. You screenshotted it to your accountant.',
     'Priced out to Papakura; commutes 90 minutes each way to the job still stuck in town.',
 ];
 
-/* ------------------------------------------------------------------- HEADLINES
-   Deadpan, current to mid-2026. The gap between tone and content is the joke. */
+/* ------------------------------------------------------------------- HEADLINES */
 const HEADLINES = [
     'OCR hiked to 2.50% — after six straight cuts — because petrol sneezed. First-home buyers, told last month the coast was clear, quietly sit back down.',
     'Rents fall a second month. Economists cheer. Reason: everyone\'s flatmate moved to Brisbane, where the rent is also unpayable but the wages aren\'t a dare.',
@@ -268,9 +271,11 @@ const HEADLINES = [
     'Granny flats up to 70m² now consent-free. Backyards nationwide sprout "minor dwellings"; the lawn is declared a failed asset.',
     'Kāinga Ora, found "not financially viable," sells another 900 state homes. The waitlist, unbothered, remains four digits.',
     'Foreign-buyer ban part-lifted: golden-visa migrants may buy $5m+ homes. ~40% are Americans buying a "Plan B." Locals keep buying "a flat, eventually, maybe."',
-    'Median house price $795k — still 18% below the 2021 bubble. Buyers praised for their "patience," i.e. their continued inability to afford anything.',
+    'Median house price $770k — still 18% below the 2021 bubble. Buyers praised for their "patience," i.e. their continued inability to afford anything.',
+    'DTI rules let an investor borrow 7× income and count 78% of the rent; a first-home buyer gets 6× and counts none. The system, working as designed.',
+    'Bank stress-tests a nurse at 7% on 6× her income, then declines her. It approves your fourth rental before lunch. She was bidding on the same house.',
+    'New-build townhouses are exempt from the deposit AND the debt limits. Investors discover a deep, sudden passion for "supply."',
     'CPI back to 4.1%, above the band, on a 27% petrol spike. RBNZ spent 18 months cutting rates to save borrowers, then undoes it in one meeting.',
-    'DTI rules cap borrowing at 6× income for homes that cost 8–11× income. The maths, officials confirm, is "aspirational."',
     'Dunedin students move into a flat with "vomit up the walls and buckets on the lawn." Landlord keeps the $2,400 bond, offers no reason, cites no law (there is one).',
     'No-cause 90-day evictions, restored last year, described by landlords as "essential" — and by 8.2% of them as something they would "actually use."',
     'Pet bonds now legal. Landlord charges two weeks\' rent for a goldfish. The goldfish is listed as co-signer.',
@@ -279,18 +284,15 @@ const HEADLINES = [
     'Labour campaigns on a 28% capital gains tax (not the family home). Property investors discover a sudden, profound interest in "the family home."',
     'Greens call it a "cost of greed crisis" and propose rent controls. The landlord lobby warns the market "would be destroyed" — a market it also describes as thriving.',
     'Interest deductibility fully restored for landlords; net investor buying intentions hit a decade high. "Anyone can do this," says a man doing it with tax breaks.',
-    'Auckland median rent eases to $635/wk. The flat is still cold, damp and mouldy — just cheaper and emptier now. Progress.',
+    'Leasehold apartment listed for $1. The ground rent and body corp are $14k a year. It is, technically, still overpriced.',
+    'A "leaky" home sells 9% under comparable. The buyer plans to rent it out as-is. It is raining. Inside.',
     'RMA to be replaced by two bills totalling 900 pages "to cut red tape." Consultants report record demand for help understanding the red-tape reduction.',
     'Housing Minister concedes a social-rent hike was based on "no particular science," just what felt "appropriate." Tenants confirm it feels like a lot.',
-    'Auckland rough sleeping doubles to ~940. Emergency-housing numbers fall — helped by staff whose performance targets depend on the numbers falling.',
-    'MDRS density made optional. Councils that wanted fewer homes are now legally permitted to want fewer homes. Bold.',
     'Net 37,000 citizens leave for good; 63% pick Australia. The population still grows — new arrivals fill the seats still warm from the Brisbane flight.',
     'UK bans no-fault evictions in May; Ireland has 1,777 rentals in the entire country. NZ, surveying the field, restores no-fault evictions.',
     'Cheapest one-year fixed now 4.65%. "Refix anxiety" enters the vernacular. Landlords forward the cost to tenants and the blame to the RBNZ.',
     'OneRoof declares "the death of the Kiwi do-up": buy ugly, not broken. The broken ones, naturally, become rentals.',
-    'Renters United launches a free tool to auto-draft Tribunal letters. The landlord lobby launches a longer sigh.',
-    '"Warm and dry" — the phrase every listing must imply and no rental is required to be.',
-    'Investor seminar sells out: "Retire on Their Rent — Deductibility Is Back, Baby." The nurse in row six is here by mistake; she thought it was a job fair.',
+    'Investor seminar sells out: "Leverage Their Rent Into Your Sixth House." The nurse in row six is here by mistake; she thought it was a job fair.',
 ];
 
 /* --------------------------------------------------------------------- STATE */
@@ -298,36 +300,34 @@ let state;
 
 function defaultState() {
     const props = {};
-    PROPERTIES.forEach(p => props[p.id] = { count: 0, cost: p.cost });
+    PROPERTIES.forEach(p => props[p.id] = { count: 0, cost: p.price });
     return {
         v: 2,
         money: CFG.START_CASH,
+        debt: 0,               // total mortgage owed
+        dtiDebt: 0,            // debt that counts against the DTI cap (excludes new-build)
+        basis: 0,              // sum of prices paid (cost basis for valuation)
+        marketIndex: 1,        // portfolio value = basis × marketIndex
+        rate: CFG.MORTGAGE_RATE,
         heat: 0,
         influence: 0,
         lifetimeInfluence: 0,
-        rentMultBonus: 0,      // additive permanent bonus from optimise/subdivide
-        extraUnits: 0,         // extra households from subdivide / airbnb
-        legacy: 0,             // prestige tiers
-        permHeatMult: 1,       // from weakenLaw (stacking)
+        rentMultBonus: 0,
+        extraUnits: 0,
+        legacy: 0,
+        permHeatMult: 1,
         properties: props,
-        upgrades: {},          // serviceId -> true
-        onceUsed: {},          // reserved for one-shot actions
+        upgrades: {},
+        onceUsed: {},
         tenants: 0,
-        featured: [],          // named tenant objects
+        featured: [],
         speed: CFG.DEFAULT_SPEED,
-        buyQty: 1,             // 1 | 10 | 'max'
+        buyQty: 1,
         lastUpdate: now(),
         weekFrac: 0,
         muted: false,
-        // stats
-        evictions: 0,
-        rentRaises: 0,
-        violations: 0,
-        bribes: 0,
-        feesInvented: 0,
-        fhbSales: 0,
-        heatMaxStreak: 0,
-        ended: false,
+        evictions: 0, rentRaises: 0, violations: 0, bribes: 0,
+        feesInvented: 0, fhbSales: 0, heatMaxStreak: 0, ended: false,
     };
 }
 
@@ -372,28 +372,47 @@ function baseTenantsFromProps(){
     let n = 0; PROPERTIES.forEach(p => n += state.properties[p.id].count * p.units); return n;
 }
 
-function weeklyIncome(){
+/* gross weekly rent roll (before costs & interest) — used to scale ops */
+function grossRentWeekly(){
     const m = multipliers();
     let rent = 0;
-    PROPERTIES.forEach(p => rent += state.properties[p.id].count * p.income);
+    PROPERTIES.forEach(p => rent += state.properties[p.id].count * p.rent);
     rent *= m.rent;
     rent += state.tenants * m.passivePerTenant;
     return Math.max(0, rent);
 }
+/* legacy alias — ops/events/squeeze scale off this positive number */
+function weeklyIncome(){ return grossRentWeekly(); }
 
-function propertyCount(){
-    let n = 0;
-    PROPERTIES.forEach(p => n += state.properties[p.id].count);
-    return n;
+function operatingWeekly(){
+    const m = multipliers();
+    let op = 0;
+    PROPERTIES.forEach(p => op += state.properties[p.id].count * p.rent * (1 - p.costRate));
+    op *= m.rent;
+    op += state.tenants * m.passivePerTenant;
+    return op;
+}
+function interestWeekly(){ return state.debt * state.rate / 52; }
+/* actual money-in-the-bank change per week (can be negative — negative gearing) */
+function netCashflow(){ return operatingWeekly() - interestWeekly(); }
+
+function assessableIncome(){ return CFG.BASE_INCOME + CFG.RENT_SHADE * grossRentWeekly() * 52; }
+function maxDebtDTI(){ return CFG.DTI * assessableIncome(); }
+function dtiHeadroom(){ return Math.max(0, maxDebtDTI() - state.dtiDebt); }
+
+function portfolioValue(){ return state.basis * state.marketIndex; }
+function equity(){ return portfolioValue() - state.debt; }
+function netWorth(){ return state.money + equity(); }
+
+/* how much more the bank will advance right now (DTI ∧ LVR) */
+function borrowable(){
+    const byDti = maxDebtDTI() - state.dtiDebt;
+    const byLvr = CFG.LVR_CAP * portfolioValue() - state.debt;
+    return Math.max(0, Math.min(byDti, byLvr));
 }
 
-function netWorth(){
-    let w = state.money;
-    PROPERTIES.forEach(p => {
-        const base = p.cost;
-        w += state.properties[p.id].count * base * 1.1;
-    });
-    return w;
+function propertyCount(){
+    let n = 0; PROPERTIES.forEach(p => n += state.properties[p.id].count); return n;
 }
 
 function phaseInfo(){
@@ -402,43 +421,52 @@ function phaseInfo(){
     PHASES.forEach((p,i)=>{ if (w >= p.min){ ph = p; idx = i; } });
     return { name: ph.name, i: idx };
 }
-
 function influenceTitle(){
     let t = INFLUENCE_TITLES[0];
     INFLUENCE_TITLES.forEach(x=>{ if (state.lifetimeInfluence >= x.min) t = x; });
     return t.name;
 }
-
 function heatTier(){
     let t = HEAT_TIERS[0], i = 0;
     HEAT_TIERS.forEach((x,idx)=>{ if (state.heat >= x.min){ t = x; i = idx; } });
     return { ...t, i };
 }
-
 function unlockedTierCount(){
     const c = propertyCount();
     return PROPERTIES.filter(p => c >= p.unlock).length;
 }
 
-/* bulk-buy maths (cost sequence is floored each step, matching buyProperty) */
-function costForN(nextCost, mult, n){
-    let total = 0, c = nextCost;
-    for (let i=0;i<n;i++){ total += c; c = Math.floor(c*mult); }
-    return total;
+/* per-unit weekly net cashflow of a property type (for the card display) */
+function unitNet(p){
+    const m = multipliers();
+    const op = p.rent * (1 - p.costRate) * m.rent;
+    const interest = (p.price * (1 - p.deposit)) * state.rate / 52;
+    return op - interest;
 }
-function maxAffordableN(nextCost, mult, cash){
-    let n = 0, c = nextCost, total = 0;
-    while (total + c <= cash && n < 5000){ total += c; c = Math.floor(c*mult); n++; }
-    return n;
-}
+
+/* bulk-buy planning: deposit + loan, gated by cash and (for non-new-builds) DTI */
 function plannedBuy(prop){
     const st = state.properties[prop.id];
-    if (state.buyQty === 'max'){
-        const n = maxAffordableN(st.cost, prop.mult, state.money);
-        return { n, cost: costForN(st.cost, prop.mult, Math.max(1,n)) };
+    const dtiRoom = prop.newBuild ? Infinity : dtiHeadroom();
+    const cap = state.buyQty === 'max' ? 9999 : state.buyQty;
+    let n = 0, price = st.cost, depTotal = 0, loanTotal = 0;
+    while (n < cap){
+        const dep = Math.floor(price * prop.deposit);
+        const loan = price - dep;
+        if (depTotal + dep > state.money) break;
+        if (loanTotal + loan > dtiRoom) break;
+        depTotal += dep; loanTotal += loan;
+        price = Math.floor(price * prop.mult); n++;
     }
-    const n = state.buyQty;
-    return { n, cost: costForN(st.cost, prop.mult, n) };
+    return { n, deposit: depTotal, loan: loanTotal, priceEach: st.cost };
+}
+function buyBlockReason(prop){
+    const st = state.properties[prop.id];
+    const dep = Math.floor(st.cost * prop.deposit);
+    const loan = st.cost - dep;
+    if (state.money < dep) return `Need ${money(dep)} deposit`;
+    if (!prop.newBuild && loan > dtiHeadroom()) return `Bank won't lend — raise your income`;
+    return null;
 }
 
 /* ============================================================ SAVE / LOAD */
@@ -447,42 +475,41 @@ function saveGame(silent){
         state.lastUpdate = now();
         localStorage.setItem(CFG.SAVE_KEY, JSON.stringify(state));
         if (!silent) toast('Empire saved. Preserved for the tribunal.', 'good');
-    } catch(e){ /* storage full / disabled */ }
+    } catch(e){}
 }
-
 function loadGame(){
-    let raw = localStorage.getItem(CFG.SAVE_KEY);
-    if (!raw) raw = localStorage.getItem('kiwiLandlordEmpire');
+    const raw = localStorage.getItem(CFG.SAVE_KEY);
     if (!raw){ state = defaultState(); return false; }
     try {
         const loaded = JSON.parse(raw);
         state = Object.assign(defaultState(), loaded);
-        PROPERTIES.forEach(p => { if (!state.properties[p.id]) state.properties[p.id] = { count:0, cost:p.cost }; });
+        PROPERTIES.forEach(p => { if (!state.properties[p.id]) state.properties[p.id] = { count:0, cost:p.price }; });
         state.upgrades = state.upgrades || {};
         state.onceUsed = state.onceUsed || {};
         state.featured = state.featured || [];
         if (!state.buyQty) state.buyQty = 1;
-        if (state.money < 1000 && propertyCount() === 0) state.money = CFG.START_CASH;
+        if (!state.rate) state.rate = CFG.MORTGAGE_RATE;
+        if (!state.marketIndex) state.marketIndex = 1;
         return true;
     } catch(e){ state = defaultState(); return false; }
 }
-
 function offlineProgress(){
     const elapsed = (now() - (state.lastUpdate || now())) / 1000;
     if (elapsed < 30) return;
     const capped = Math.min(elapsed, CFG.OFFLINE_CAP_HOURS * 3600);
     const weeks = capped / CFG.DEFAULT_SPEED;
-    const earned = weeklyIncome() * weeks;
+    const flow = netCashflow();
+    const earned = flow > 0 ? flow * weeks : 0;   // don't bankrupt you while away
+    state.marketIndex *= Math.pow(1 + CFG.APPRECIATION/52, weeks);
+    state.heat = clamp(state.heat - multipliers().heatDecay * weeks, 0, CFG.HEAT_MAX);
     if (earned > 1){
         state.money += earned;
-        state.heat = clamp(state.heat - multipliers().heatDecay * weeks, 0, CFG.HEAT_MAX);
-        const hrs = capped/3600;
-        setTimeout(()=> modalOffline(earned, hrs), 400);
+        setTimeout(()=> modalOffline(earned, capped/3600), 400);
     }
 }
 
 /* =============================================================== RENDERING */
-const updaters = [];   // per-item refresh closures
+const updaters = [];
 
 function buildAll(){
     updaters.length = 0;
@@ -494,7 +521,6 @@ function buildAll(){
     renderNews(true);
 }
 
-/* ---- Properties ---- */
 function buildProperties(){
     const list = $('properties-list');
     list.innerHTML = '';
@@ -503,16 +529,18 @@ function buildProperties(){
         card.className = 'buy-card';
         card.innerHTML = `
             <div class="buy-card-head">
-                <span class="buy-title"><span class="buy-emoji">${p.emoji}</span> ${p.name}</span>
+                <span class="buy-title"><span class="buy-emoji">${p.emoji}</span> ${p.name}${p.newBuild?' <span class="nb-badge">NEW BUILD</span>':''}</span>
                 <span class="buy-count" data-count>Owned 0</span>
             </div>
             <div class="buy-desc">${p.desc}</div>
             <div class="buy-stats">
-                <span>Rent <b data-rent></b>/wk</span>
-                <span>+<b>${p.units}</b> household${p.units>1?'s':''}</span>
+                <span>Price <b data-price></b></span>
+                <span>Deposit <b data-dep></b></span>
+                <span>Net <b data-net></b>/wk</span>
+                <span>+<b>${p.units}</b> hh</span>
             </div>
             <div class="lock-note" data-lock hidden></div>
-            <button class="buy-btn" data-buy>Acquire</button>`;
+            <button class="buy-btn" data-buy>Buy</button>`;
         list.appendChild(card);
         const btn = card.querySelector('[data-buy]');
         btn.addEventListener('click', (e)=> buyProperty(p.id, e));
@@ -522,29 +550,33 @@ function buildProperties(){
             const unlocked = propertyCount() >= p.unlock;
             card.classList.toggle('locked', !unlocked);
             card.querySelector('[data-count]').textContent = 'Owned ' + st.count;
-            card.querySelector('[data-rent]').textContent = money(p.income * multipliers().rent);
+            card.querySelector('[data-price]').textContent = money(st.cost);
+            card.querySelector('[data-dep]').textContent = money(Math.floor(st.cost * p.deposit));
+            const net = unitNet(p);
+            const netEl = card.querySelector('[data-net]');
+            netEl.textContent = (net<0?'−':'+') + money(Math.abs(net));
+            netEl.className = net < 0 ? 'cf-neg' : 'cf-pos';
             const lock = card.querySelector('[data-lock]');
             if (!unlocked){
                 lock.hidden = false;
                 lock.textContent = `🔒 Unlocks at ${p.unlock} properties owned`;
-                btn.disabled = true;
-                btn.textContent = 'Locked';
+                btn.disabled = true; btn.textContent = 'Locked';
                 return;
             }
             lock.hidden = true;
             const plan = plannedBuy(p);
             if (state.buyQty === 'max'){
                 btn.disabled = plan.n < 1;
-                btn.textContent = plan.n >= 1 ? `Acquire ×${plan.n} — ${money(plan.cost)}` : `Need ${money(st.cost)}`;
+                btn.textContent = plan.n >= 1 ? `Buy ×${plan.n} — ${money(plan.deposit)} down` : (buyBlockReason(p) || 'Unavailable');
             } else {
-                btn.disabled = state.money < plan.cost;
-                btn.textContent = state.money < plan.cost ? `Need ${money(plan.cost)}` : `Acquire ×${plan.n} — ${money(plan.cost)}`;
+                const ok = plan.n >= state.buyQty;
+                btn.disabled = !ok;
+                btn.textContent = ok ? `Buy ×${state.buyQty} — ${money(plan.deposit)} down` : (buyBlockReason(p) || 'Unavailable');
             }
         });
     });
 }
 
-/* ---- Operations ---- */
 function buildOperations(){
     const list = $('operations-list');
     list.innerHTML = '';
@@ -557,7 +589,6 @@ function buildOperations(){
             <span class="action-tags" data-tags></span>`;
         list.appendChild(btn);
         btn.addEventListener('click', (e)=> doOperation(op, e));
-
         updaters.push(()=>{
             if (op.hideIf && op.hideIf(state)){ btn.style.display = 'none'; return; }
             btn.style.display = '';
@@ -566,7 +597,6 @@ function buildOperations(){
         });
     });
 }
-
 function opTags(op){
     const t = [];
     if (op.cost) t.push(`<span class="tag cost">−${money(op.cost)}</span>`);
@@ -577,7 +607,6 @@ function opTags(op){
     if (op.infl) t.push(`<span class="tag infl">+${op.infl} infl</span>`);
     return t.join('');
 }
-
 function opAvailable(op){
     if (op.needTenants && state.tenants <= 0) return false;
     if (op.needProperty && propertyCount() < op.needProperty) return false;
@@ -585,7 +614,6 @@ function opAvailable(op){
     return true;
 }
 
-/* ---- Services ---- */
 function buildServices(){
     const list = $('services-list');
     list.innerHTML = '';
@@ -603,36 +631,26 @@ function buildServices(){
         list.appendChild(card);
         const btn = card.querySelector('[data-buy]');
         btn.addEventListener('click', (e)=> buyService(sv, e));
-
         updaters.push(()=>{
             const owned = !!state.upgrades[sv.id];
             card.classList.toggle('owned-service', owned);
             const lock = card.querySelector('[data-lock]');
             const gate = meetsNeed(sv.need);
             if (owned){
-                card.classList.remove('locked');
-                lock.hidden = true;
-                btn.className = 'buy-btn owned';
-                btn.disabled = true;
-                btn.textContent = '✓ Retained';
+                card.classList.remove('locked'); lock.hidden = true;
+                btn.className = 'buy-btn owned'; btn.disabled = true; btn.textContent = '✓ Retained';
             } else if (!gate.ok){
-                card.classList.add('locked');
-                lock.hidden = false;
-                lock.textContent = '🔒 ' + gate.why;
-                btn.disabled = true;
-                btn.textContent = 'Locked';
+                card.classList.add('locked'); lock.hidden = false; lock.textContent = '🔒 ' + gate.why;
+                btn.disabled = true; btn.textContent = 'Locked';
             } else {
-                card.classList.remove('locked');
-                lock.hidden = true;
-                btn.className = 'buy-btn';
-                btn.disabled = state.money < sv.cost;
+                card.classList.remove('locked'); lock.hidden = true;
+                btn.className = 'buy-btn'; btn.disabled = state.money < sv.cost;
                 btn.textContent = `Purchase — ${money(sv.cost)}`;
             }
         });
     });
 }
 
-/* ---- Politics ---- */
 function buildPolitics(){
     const list = $('politics-list');
     list.innerHTML = '';
@@ -645,13 +663,11 @@ function buildPolitics(){
             <span class="action-tags" data-tags></span>`;
         list.appendChild(btn);
         btn.addEventListener('click', (e)=> doPolitics(pa, e));
-
         updaters.push(()=>{
             if (pa.once && state.onceUsed[pa.id]){ btn.style.display='none'; return; }
             btn.style.display = '';
             const cost = pa.cost(state);
-            const tags = [];
-            tags.push(`<span class="tag cost">−${money(cost)}</span>`);
+            const tags = [`<span class="tag cost">−${money(cost)}</span>`];
             if (pa.spendInfl) tags.push(`<span class="tag infl">−${pa.spendInfl} infl</span>`);
             if (pa.infl) tags.push(`<span class="tag infl">+${pa.infl} infl</span>`);
             if (pa.heat) tags.push(`<span class="tag money">${pa.heat} heat</span>`);
@@ -665,13 +681,10 @@ function buildPolitics(){
         });
     });
 }
-
 function meetsNeed(need){
     if (!need) return { ok:true };
-    if (need.phase && phaseInfo().i < need.phase)
-        return { ok:false, why:`Requires ${PHASES[need.phase].name}` };
-    if (need.infl && state.influence < need.infl)
-        return { ok:false, why:`Requires ${need.infl} influence on hand` };
+    if (need.phase && phaseInfo().i < need.phase) return { ok:false, why:`Requires ${PHASES[need.phase].name}` };
+    if (need.infl && state.influence < need.infl) return { ok:false, why:`Requires ${need.infl} influence on hand` };
     return { ok:true };
 }
 
@@ -682,7 +695,6 @@ function makeTenant(){
     const sit = pick(T_SITUATION).replace('$__', '$'+rent);
     return { name:`${first} ${last}`, job:pick(T_JOB), rent, strain: 20 + Math.floor(Math.random()*28), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳']) };
 }
-
 function syncTenants(){
     state.tenants = baseTenants();
     const want = state.tenants > 0 ? Math.min(4, Math.max(1, Math.ceil(state.tenants/3))) : 0;
@@ -691,7 +703,6 @@ function syncTenants(){
     while (state.featured.length > want){ state.featured.pop(); changed = true; }
     return changed;
 }
-
 function renderTenants(){
     const wrap = $('tenant-cards');
     $('tenant-total').textContent = `(${fmt(state.tenants)} household${state.tenants===1?'':'s'})`;
@@ -722,7 +733,6 @@ function renderTenants(){
         card.querySelector('[data-strainlabel]').textContent = strainWord(t.strain);
     });
 }
-
 function updateTenantStrain(){
     const cards = $('tenant-cards').querySelectorAll('.tenant-card');
     cards.forEach((c, i)=>{
@@ -733,7 +743,6 @@ function updateTenantStrain(){
         if (lbl) lbl.textContent = strainWord(t.strain);
     });
 }
-
 function strainWord(s){
     if (s >= 92) return 'At breaking point';
     if (s >= 70) return 'Struggling badly';
@@ -748,15 +757,34 @@ function buyProperty(id, e){
     const st = state.properties[id];
     if (propertyCount() < p.unlock) return;
     const plan = plannedBuy(p);
-    if (plan.n < 1 || state.money < plan.cost) return;
+    const need = state.buyQty === 'max' ? 1 : state.buyQty;
+    if (plan.n < need) return;
 
-    state.money -= plan.cost;
-    for (let i=0;i<plan.n;i++){ st.count++; st.cost = Math.floor(st.cost * p.mult); }
-    fx('−'+money(plan.cost), 'neg', e);
+    state.money -= plan.deposit;
+    state.debt += plan.loan;
+    if (!p.newBuild) state.dtiDebt += plan.loan;
+    // add cost basis at the escalated prices actually paid
+    let price = st.cost;
+    for (let i=0;i<plan.n;i++){ st.count++; state.basis += price; price = Math.floor(price * p.mult); }
+    st.cost = price;
+
+    fx('−'+money(plan.deposit)+' down', 'neg', e);
     blip(180);
-    const label = plan.n > 1 ? `${plan.n} more ${p.name.toLowerCase()}s` : `another ${p.name.toLowerCase()}`;
-    addNews(`You acquired ${label}. Somewhere, a first-home buyer refreshes TradeMe, sees the price, and quietly closes the tab.`, 'bad');
+    const label = plan.n > 1 ? `${plan.n} more ${p.name.toLowerCase()}s` : `a ${p.name.toLowerCase()}`;
+    addNews(`You mortgaged into ${label}. ${money(plan.loan)} of debt, someone else\'s roof, and a first-home buyer who just watched it sell.`, 'bad');
     if (syncTenants()) renderTenants();
+    refresh();
+}
+
+function releaseEquity(e){
+    const room = borrowable();
+    if (room < 1000) return;
+    state.money += room;
+    state.debt += room;
+    state.dtiDebt += room;   // owner drawdown counts against DTI
+    fx('+'+money(room), 'pos', e);
+    blip(240);
+    addNews(`Refinanced. Your houses earned more than you did, so you remortgaged them and pocketed ${money(room)} to buy another. This is called "wealth creation."`, 'event');
     refresh();
 }
 
@@ -791,7 +819,7 @@ function doOperation(op, e){
     if (op.id === 'inventFee') state.feesInvented++;
     if (op.evicts){ state.evictions++; evictSomeone(); }
     if (op.removesHousehold){ state.extraUnits = Math.max(state.extraUnits-1, -baseTenantsFromProps()+1); }
-    if (op.sellTop){ sellTopProperty(op.sellTop); }
+    if (op.sellTop){ const sc = sellTopProperty(op.sellTop); if (sc) fx('+'+money(sc), 'pos', e); }
     if (op.fhb){ state.fhbSales++; checkRedemption(); }
 
     if (op.strain) state.featured.forEach(t=> t.strain = clamp(t.strain + op.strain, 0, 100));
@@ -802,13 +830,21 @@ function doOperation(op, e){
     refresh();
 }
 
-function sellTopProperty(mult){
+/* sell one unit of the priciest owned type; clears its share of debt */
+function sellTopProperty(premium){
     let best = 0, id = null;
-    PROPERTIES.forEach(p=>{ if (state.properties[p.id].count>0 && p.cost>best){ best=p.cost; id=p.id; } });
-    if (!id) return;
+    PROPERTIES.forEach(p=>{ if (state.properties[p.id].count>0 && p.price>best){ best=p.price; id=p.id; } });
+    if (!id) return 0;
     const p = PROPERTIES.find(x=>x.id===id);
+    const value = p.price * state.marketIndex;
+    const loanShare = Math.min(state.debt, p.price * (1 - p.deposit));
+    const cashOut = Math.max(0, value * premium - loanShare);
     state.properties[id].count--;
-    if (mult>0) state.money += Math.floor(p.cost * mult);
+    state.debt = Math.max(0, state.debt - loanShare);
+    if (!p.newBuild) state.dtiDebt = Math.max(0, state.dtiDebt - loanShare);
+    state.basis = Math.max(0, state.basis - p.price);
+    state.money += cashOut;
+    return cashOut;
 }
 
 function evictSomeone(){
@@ -826,20 +862,19 @@ function squeezeTenant(idx, e){
     const t = state.featured[idx]; if (!t) return;
     const bump = 25 + Math.floor(Math.random()*30);
     t.rent += bump; t.strain = clamp(t.strain + 18 + Math.floor(Math.random()*14), 0, 100);
-    state.money += bump * 4 + weeklyIncome() * 0.2;
+    state.money += bump * 4 + grossRentWeekly() * 0.2;
     state.rentRaises++;
-    fx('+'+money(bump*4 + weeklyIncome()*0.2), 'pos', e);
+    fx('+'+money(bump*4 + grossRentWeekly()*0.2), 'pos', e);
     addHeat(3 * multipliers().heatGen, e);
     blip(220);
 
     if (t.strain >= 100){
         if (Math.random() < 0.25){
             addNews(`${t.name} somehow made rent — took a third job and stopped answering the door. You call this "resilience."`, 'bad');
-            t.strain = 82;
-            renderTenants();
+            t.strain = 82; renderTenants();
         } else {
             state.evictions++;
-            state.money += Math.max(4000, weeklyIncome()*0.8);
+            state.money += Math.max(4000, grossRentWeekly()*0.8);
             addHeat(10 * multipliers().heatGen, e);
             const card = $('tenant-cards').children[idx];
             if (card) card.classList.add('breaking');
@@ -872,7 +907,6 @@ function doPolitics(pa, e){
     if (state.money < cost) return;
     if (!meetsNeed(pa.need).ok) return;
     if (pa.spendInfl && state.influence < pa.spendInfl) return;
-
     state.money -= cost;
     fx('−'+money(cost), 'neg', e);
     if (pa.spendInfl){ state.influence -= pa.spendInfl; fx('−'+pa.spendInfl+' infl', 'neg', e); }
@@ -882,13 +916,11 @@ function doPolitics(pa, e){
     if (pa.once){ state.onceUsed[pa.id] = true; }
     if (pa.id === 'bribe' || pa.id === 'donate' || pa.id === 'textMinister') state.bribes++;
     blip(260);
-
     if (pa.ending){ addNews(pa.news(state), 'event'); refresh(); setTimeout(()=> triggerEnding(pa.ending), 500); return; }
     addNews(pa.news(state), pa.heat < 0 ? 'good' : 'event');
     refresh();
 }
 
-/* ------------------------------------------------------- resource mutators */
 function addHeat(delta, e){
     if (!delta) return;
     state.heat = clamp(state.heat + delta, 0, CFG.HEAT_MAX);
@@ -905,26 +937,25 @@ function addInfluence(delta, e){
 function onWeek(){
     const m = multipliers();
     state.heat = clamp(state.heat - m.heatDecay, 0, CFG.HEAT_MAX);
+    state.marketIndex *= (1 + CFG.APPRECIATION/52);   // steady appreciation
     state.featured.forEach(t=>{ t.strain = clamp(t.strain + (Math.random()<0.5?0.4:0), 0, 100); });
 
     const nowS = now()/1000;
     if (nowS - (state._lastNews||0) > CFG.NEWS_COOLDOWN && Math.random() < 0.35){
-        addNews(pick(HEADLINES));
-        state._lastNews = nowS;
+        addNews(pick(HEADLINES)); state._lastNews = nowS;
     }
-
     const eventProb = 0.03 + (state.heat/100) * 0.4;
     if (nowS - (state._lastEvent||0) > CFG.EVENT_COOLDOWN && Math.random() < eventProb){
-        rollEvent();
-        state._lastEvent = nowS;
+        rollEvent(); state._lastEvent = nowS;
     }
-
     if (state.heat >= CFG.HEAT_MAX - 1 && state.influence < 200){
         state.heatMaxStreak++;
         if (state.heatMaxStreak >= 3){ triggerEnding('expose'); return; }
-    } else {
-        state.heatMaxStreak = 0;
-    }
+    } else state.heatMaxStreak = 0;
+}
+
+function setRate(delta, label){
+    state.rate = clamp(state.rate + delta, CFG.RATE_MIN, CFG.RATE_MAX);
 }
 
 function rollEvent(){
@@ -938,9 +969,13 @@ function rollEvent(){
 const EVENTS = [
     /* ---- calm / positive (tier 0) ---- */
     { tier:0, cond:()=> state.tenants>0, run(){
-        const b = Math.floor(weeklyIncome()*0.6);
+        const b = Math.floor(grossRentWeekly()*0.6);
         state.money += b;
         addNews(`✅ EVENT: Interest deductibility refund lands. The tax break you lobbied for now pays for the lobbying. +${money(b)}.`, 'good');
+    }},
+    { tier:0, cond:()=> state.debt>200000, run(){
+        setRate(-0.004);
+        addNews(`✅ EVENT: The RBNZ blinks and trims the OCR. Your mortgage rate eases to ${(state.rate*100).toFixed(2)}%. Every dollar of relief, you keep.`, 'good');
     }},
     { tier:0, run(){
         addNews(`A think-tank you quietly fund releases a report proving the housing crisis is caused by tenants wanting houses.`, 'event');
@@ -955,15 +990,13 @@ const EVENTS = [
         if (state.upgrades.compliance || state.influence>=100){
             addNews(`⚠️ EVENT: Healthy Homes inspector arrives. Your "Compliance Consultant" hands them a folder. They leave, subtly worse people.`, 'event');
         } else {
-            const fine = state.tenants*900 + 5000;
-            state.money -= fine; addHeat(6);
+            const fine = state.tenants*900 + 5000; state.money -= fine; addHeat(6);
             addNews(`⚠️ EVENT: Healthy Homes inspection FAILED (mandatory since July 2025). Fined ${money(fine)}. Should've bought the consultant, not the jet-ski.`, 'bad');
         }
     }},
-    { tier:1, run(){
-        const c = propertyCount()*700 + 2000;
-        state.money -= c;
-        addNews(`⚠️ EVENT: RBNZ hikes the OCR again on petrol-driven inflation. Your floating rate jumps ${money(c)}/wk. You forward the cost to tenants and the blame to Wellington.`, 'bad');
+    { tier:1, cond:()=> state.debt>150000, run(){
+        setRate(0.005);
+        addNews(`⚠️ EVENT: RBNZ hikes the OCR again on petrol-driven inflation. Your mortgage rate jumps to ${(state.rate*100).toFixed(2)}% — interest bill up to ${money(interestWeekly())}/wk. You forward the cost to tenants and the blame to Wellington.`, 'bad');
     }},
 
     /* ---- heat (tier 2) ---- */
@@ -975,14 +1008,12 @@ const EVENTS = [
         if (state.upgrades.tribunal){
             addNews(`⚖️ EVENT: Tenancy Tribunal case. Your Season Pass kicks in — you win on a technicality involving a comma. Costs awarded to the crying party.`, 'event');
         } else {
-            const pay = 4000 + state.tenants*200;
-            state.money -= pay; addHeat(4);
+            const pay = 4000 + state.tenants*200; state.money -= pay; addHeat(4);
             addNews(`⚖️ EVENT: Tribunal orders you to repay ${money(pay)} in unlawful fees. You appeal, on principle (of keeping the money).`, 'bad');
         }
     }},
     { tier:2, cond:()=> state.tenants>=4, run(){
-        const loss = Math.floor(weeklyIncome()*1.5);
-        state.money -= loss;
+        const loss = Math.floor(grossRentWeekly()*1.5); state.money -= loss;
         addNews(`✈️ EVENT: Two households emigrate to Brisbane mid-tenancy. Rents are falling and you "can't find good tenants" — a record 43% of landlords agree. −${money(loss)} in voids.`, 'bad');
     }},
 
@@ -992,14 +1023,16 @@ const EVENTS = [
             state.influence -= 60;
             addNews(`🛡️ EVENT: An exposé loads — then a minister calls you "a valued housing provider" on Morning Report and the story dies mid-sentence. −60 influence, well spent.`, 'event');
         } else {
-            state.heat = clamp(state.heat+6,0,100);
-            state.influence = Math.max(0, state.influence-40);
+            state.heat = clamp(state.heat+6,0,100); state.influence = Math.max(0, state.influence-40);
             addNews(`💥 EVENT: The Spinoff runs "Landlord Parliament" — the investors who bought 25 rentals after writing the rules — and you're in the sidebar. The public is, briefly, furious.`, 'bad');
         }
     }},
+    { tier:3, cond:()=> propertyCount()>=6, run(){
+        state.marketIndex *= 0.92;
+        addNews(`📉 EVENT: Market correction — values slide 8% as the "recovery" stalls. Your equity thins and the over-leveraged wobble. Debt, however, does not shrink.`, 'bad');
+    }},
     { tier:3, cond:()=> state.tenants>=6, run(){
-        const loss = Math.floor(weeklyIncome()*3);
-        state.money -= loss; addHeat(5);
+        const loss = Math.floor(grossRentWeekly()*3); state.money -= loss; addHeat(5);
         addNews(`✊ EVENT: RENT STRIKE. Your tenants collectively withhold. −${money(loss)} while they hold the line and you hold your breath.`, 'bad');
     }},
     { tier:3, run(){
@@ -1011,26 +1044,23 @@ const EVENTS = [
 /* =============================================================== ENDINGS */
 function checkPassiveEndings(){
     if (state.ended) return;
-    if (netWorth() >= 250000000){ triggerEnding('empire'); return; }
-    if (state.money < -60000){ triggerEnding('collapse'); return; }
+    if (netWorth() >= 400000000){ triggerEnding('empire'); return; }
+    if (state.money < -120000){ triggerEnding('collapse'); return; }
 }
-
 function checkRedemption(){
     if (state.fhbSales >= 3 && state.evictions === 0){ triggerEnding('reform'); }
 }
 
 function triggerEnding(kind){
     if (state.ended) return;
-    state.ended = true;
-    state.speed = 0;
-    setSpeedButtons();
+    state.ended = true; state.speed = 0; setSpeedButtons();
 
     const stats = `
         <div class="stat-grid">
             <div>Properties<b>${propertyCount()}</b></div>
             <div>Households<b>${fmt(state.tenants)}</b></div>
             <div>Net worth<b>${money(netWorth())}</b></div>
-            <div>Influence<b>${influenceTitle()}</b></div>
+            <div>Mortgage debt<b>${money(state.debt)}</b></div>
             <div>Evictions ordered<b>${state.evictions}</b></div>
             <div>Healthy Homes ignored<b>${state.violations}</b></div>
         </div>`;
@@ -1038,30 +1068,24 @@ function triggerEnding(kind){
     const E = {
         minister: { kicker:'Ending — The Coronation', title:'Minister of Housing 🏛️',
             body:`<p>You've been appointed to govern the housing system you spent the whole game strip-mining — the Kāinga Ora board, secured the modern way: a text to a mate, no Cabinet, no questions.</p>
-                  <p>A landlord with <b>${state.evictions} evictions</b> and <b>${state.violations} ignored standards</b> now sets the rules, writes the RMA replacement, AND — as a bonus portfolio — is the country's chief lawyer. Poacher, gamekeeper, and the judge. You go on the news to say the answer is "supply" and "getting government out of the way." Reporters nod. In a car parked outside, a nurse reads it and turns the engine on for warmth.</p>
+                  <p>A landlord with <b>${state.evictions} evictions</b> and <b>${state.violations} ignored standards</b> now sets the rules, writes the RMA replacement, AND — as a bonus portfolio — is the country's chief lawyer. You go on the news to say the answer is "supply" and "getting government out of the way." Reporters nod. In a car parked outside, a nurse the bank declined reads it and turns the engine on for warmth.</p>
                   <p>The irony is so dense you could subdivide it. Consent-free, obviously.</p>` },
         empire: { kicker:'Ending — Total Victory', title:'The Empire 🏢',
-            body:`<p>A quarter of a billion dollars. You own so much of Aotearoa that "landlord" undersells it — you're a weather system.</p>
-                  <p>First-home buyers gave up a generation ago; the median first-buyer is now 40. Renting is simply the condition of being alive here, and you are the condition. You won capitalism. The prize is that everyone else lost, and pays you monthly for the privilege — right up until they board the Brisbane flight.</p>` },
+            body:`<p>Net worth past four hundred million, most of it borrowed into being. You own so much of Aotearoa that "landlord" undersells it — you're a weather system with a mortgage.</p>
+                  <p>The bank lent you 7× an income you barely earn, against rent you barely justify, to buy homes a first-home buyer will never be advanced 6× for. You won capitalism on margin. The prize is that everyone else lost, and pays you monthly — right up until they board the Brisbane flight.</p>` },
         expose: { kicker:'Ending — The Reckoning', title:'The Exposé 💥',
             body:`<p>You couldn't buy the silence fast enough. RNZ, Stuff and The Spinoff dropped it the same morning: the mould, the fees, the pregnant tenant, the rat droppings, the boat named "Yield."</p>
-                  <p>With <b>${state.evictions} evictions</b> and <b>${state.violations} ignored standards</b> on the record and not enough influence to make it vanish, the Tribunal moved, the banks blinked, and the portfolio came apart. Turns out the immunity was rented too. You missed a payment.</p>` },
+                  <p>With <b>${state.evictions} evictions</b> and <b>${state.violations} ignored standards</b> on the record and not enough influence to make it vanish, the Tribunal moved, the banks called the loans, and the leverage that built you took you apart. Turns out the immunity was rented too. You missed a payment.</p>` },
         collapse: { kicker:'Ending — Margin Call', title:'The Market Correction 📉',
-            body:`<p>You leveraged into the sky and the sky sent a bill. The RBNZ, having cut rates six times, hiked them the moment petrol flinched — and the "recovery" everyone promised in 2026 turned out to be a landing with the wheels up.</p>
-                  <p>Refix anxiety became refix reality. You declared bankruptcy owing <b>${money(-state.money)}</b>. Every eviction, every bribe, every fee — and the maths still found you. The homes get sold to another you. The tenants don't even get to change the locks.</p>` },
+            body:`<p>You leveraged into the sky and the sky sent a bill. The RBNZ, having cut rates six times, hiked them the moment petrol flinched; your interest-only bombs came due; the "recovery" everyone promised in 2026 turned out to be a landing with the wheels up.</p>
+                  <p>Negative gearing stopped being a strategy and started being the truth. You went under owing <b>${money(state.debt)}</b> against homes worth less than the loans. The bank takes the lot and sells it to the next you. The tenants don't even get to change the locks.</p>` },
         reform: { kicker:'Ending — The Secret One', title:'The Reformed Landlord 🕊️',
             body:`<p>You sold the homes to the families living in them, at cost, and never evicted a soul. Property forums call you "compromised." NZPIF revokes your membership. The tenants call you the best landlord they ever had — a devastating indictment of all the others.</p>
                   <p>Here's the twist the game owes you: it barely moved the market. A few families housed; the crisis didn't notice. No election result fixes this by itself, and neither does one decent landlord. Individual virtue is lovely, and it is not policy.</p>
                   <p>You did a good thing anyway. That has to count for something — even if the spreadsheet, and the country, carry on as if it didn't.</p>` },
     };
-
     const e = E[kind] || E.empire;
-    showModal(`
-        <div class="modal-kicker">${e.kicker}</div>
-        <h1>${e.title}</h1>
-        ${e.body}
-        ${stats}
-    `, [
+    showModal(`<div class="modal-kicker">${e.kicker}</div><h1>${e.title}</h1>${e.body}${stats}`, [
         { label:'Share result 📣', cls:'gold', fn:()=>{ shareStats(); } },
         { label:'Play again', cls:'primary', fn:()=>{ hardReset(); } },
     ], true);
@@ -1070,41 +1094,27 @@ function triggerEnding(kind){
 /* =============================================================== PRESTIGE */
 function updatePrestigeButton(){
     const btn = $('prestige-btn');
-    const eligible = state.upgrades.trust && netWorth() >= 5000000;
-    btn.hidden = !eligible;
+    btn.hidden = !(state.upgrades.trust && netWorth() >= 8000000);
 }
-
 function doPrestige(){
     const gain = state.legacy + 1;
     showModal(`
         <div class="modal-kicker">Restructure</div>
         <h1>Move it all into the Trust 🏦</h1>
-        <p>Liquidate the visible empire. The properties, the cash — gone from your name, which is the point. You keep your <b>political influence</b> (halved) and your <b>Business Services</b>, and you return as a clean-skinned "first-time investor" the banks adore.</p>
+        <p>Liquidate the visible empire — properties, cash, and the debt that built it, all gone from your name, which is the point. You keep your <b>political influence</b> (halved) and your <b>Business Services</b>, and return as a clean-skinned "first-time investor" the banks adore.</p>
         <p>Permanent bonus rises to <b>+${Math.round(gain*CFG.LEGACY_BONUS*100)}% rent</b>, forever. You have faced no consequences. You have simply become harder to see.</p>
     `, [
         { label:'Not yet', cls:'ghost', fn:()=> closeModal() },
         { label:'Restructure', cls:'gold', fn:()=>{
-            const keepUpgrades = state.upgrades;
-            const keepLegacy = state.legacy + 1;
-            const keepInfl = Math.floor(state.influence/2);
-            const keepLifetime = state.lifetimeInfluence;
-            const muted = state.muted;
-            const buyQty = state.buyQty;
+            const keep = { upgrades: state.upgrades, legacy: state.legacy+1, influence: Math.floor(state.influence/2),
+                           lifetime: state.lifetimeInfluence, muted: state.muted, buyQty: state.buyQty };
             state = defaultState();
-            state.upgrades = keepUpgrades;
-            state.legacy = keepLegacy;
-            state.influence = keepInfl;
-            state.lifetimeInfluence = keepLifetime;
-            state.muted = muted;
-            state.buyQty = buyQty;
-            state._phaseSeen = 0;
-            state._unlockedSeen = unlockedTierCount();
-            syncTenants();
-            buildAll();
-            closeModal();
-            toast(`Restructured. Legacy tier ${keepLegacy}. Nothing is your fault now.`, 'gold');
-            refresh();
-            saveGame(true);
+            state.upgrades = keep.upgrades; state.legacy = keep.legacy; state.influence = keep.influence;
+            state.lifetimeInfluence = keep.lifetime; state.muted = keep.muted; state.buyQty = keep.buyQty;
+            state._phaseSeen = 0; state._unlockedSeen = unlockedTierCount();
+            syncTenants(); buildAll(); closeModal();
+            toast(`Restructured. Legacy tier ${keep.legacy}. Nothing is your fault now.`, 'gold');
+            refresh(); saveGame(true);
         }},
     ]);
 }
@@ -1118,7 +1128,6 @@ function addNews(text, kind){
     item.innerHTML = `<span class="stamp">${stamp}</span>${text}`;
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > 24) feed.removeChild(feed.lastChild);
-
     const newsTab = document.querySelector('.tab[data-tab="news"]');
     if (newsTab && !newsTab.classList.contains('active')){
         state._unread = (state._unread||0) + 1;
@@ -1127,9 +1136,8 @@ function addNews(text, kind){
         b.textContent = state._unread;
     }
 }
-
 function renderNews(first){
-    if (first){ $('news-feed').innerHTML = ''; addNews('Welcome to PortfolioMax™. Election-year wealth-building starts now. Someone has to own the houses — why not you, specifically?', 'event'); }
+    if (first){ $('news-feed').innerHTML = ''; addNews('Welcome to PortfolioMax™. Election-year wealth-building starts now. The bank is ready to lend you a life other people can\'t rent.', 'event'); }
 }
 
 /* =============================================================== JUICE */
@@ -1138,41 +1146,33 @@ function fx(text, cls, e, offsetY){
     if (!e.currentTarget && !e.target && e.clientX === undefined) return;
     const layer = $('fx-layer');
     const span = document.createElement('div');
-    span.className = 'fx-num ' + cls;
-    span.textContent = text;
+    span.className = 'fx-num ' + cls; span.textContent = text;
     let x, y;
     const tgt = e.currentTarget || e.target;
     if (tgt && tgt.getBoundingClientRect){
         const r = tgt.getBoundingClientRect();
-        x = r.left + r.width/2 + (Math.random()*40-20);
-        y = r.top + (offsetY||10);
+        x = r.left + r.width/2 + (Math.random()*40-20); y = r.top + (offsetY||10);
     } else { x = e.clientX; y = e.clientY; }
-    span.style.left = x + 'px';
-    span.style.top = y + 'px';
+    span.style.left = x + 'px'; span.style.top = y + 'px';
     layer.appendChild(span);
     setTimeout(()=> span.remove(), 1150);
 }
-
 function toast(text, cls){
     const layer = $('toast-layer');
     const t = document.createElement('div');
-    t.className = 'toast' + (cls?' '+cls:'');
-    t.textContent = text;
+    t.className = 'toast' + (cls?' '+cls:''); t.textContent = text;
     layer.appendChild(t);
     setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.transition='all .3s'; }, 3200);
     setTimeout(()=> t.remove(), 3600);
 }
-
 let audioCtx = null;
 function blip(freq){
     if (state.muted) return;
     try {
         audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
         const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-        o.type = 'triangle'; o.frequency.value = freq||220;
-        g.gain.value = 0.04;
-        o.connect(g); g.connect(audioCtx.destination);
-        o.start();
+        o.type='triangle'; o.frequency.value = freq||220; g.gain.value = 0.04;
+        o.connect(g); g.connect(audioCtx.destination); o.start();
         g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
         o.stop(audioCtx.currentTime + 0.13);
     } catch(e){}
@@ -1181,14 +1181,11 @@ function blip(freq){
 /* =============================================================== MODAL */
 function showModal(html, actions, isEnding){
     $('modal-content').innerHTML = html;
-    const actWrap = $('modal-actions');
-    actWrap.innerHTML = '';
+    const actWrap = $('modal-actions'); actWrap.innerHTML = '';
     (actions||[]).forEach(a=>{
         const b = document.createElement('button');
-        b.className = 'modal-btn ' + (a.cls||'primary');
-        b.textContent = a.label;
-        b.addEventListener('click', a.fn);
-        actWrap.appendChild(b);
+        b.className = 'modal-btn ' + (a.cls||'primary'); b.textContent = a.label;
+        b.addEventListener('click', a.fn); actWrap.appendChild(b);
     });
     $('modal-overlay').hidden = false;
 }
@@ -1199,7 +1196,7 @@ function modalOffline(earned, hrs){
         <div class="modal-kicker">While you were away</div>
         <h1>The rent kept coming 💤</h1>
         <p>You logged off for <b>${hrs<1 ? Math.round(hrs*60)+' minutes' : hrs.toFixed(1)+' hours'}</b>. The tenants did not get that option.</p>
-        <p>Passive income banked: <b>${money(earned)}</b>. Scrutiny cooled while the news cycle moved on to a different villain.</p>
+        <p>Net cashflow banked: <b>${money(earned)}</b>, and your properties quietly appreciated while you slept. Scrutiny cooled as the news cycle found a new villain.</p>
     `, [{ label:'Excellent', cls:'primary', fn:()=> closeModal() }]);
 }
 
@@ -1208,23 +1205,21 @@ function modalIntro(){
         <div class="modal-kicker">🎮 A satirical idle game · not investment advice</div>
         <h1>Kiwi Landlord Empire</h1>
         <p style="font-size:1.05em;">A satire of Aotearoa's housing crisis, played through <b>PortfolioMax™</b> — a cheerful investor dashboard that reports human misery as good news.</p>
-        <p><b>You're the landlord.</b> Buy up homes, squeeze your tenants, and launder your reputation through politics until you're appointed <b>Minister of Housing</b> — all before Public Scrutiny redlines and the exposé ends your run.</p>
-        <p style="color:var(--muted);font-size:.9em;">Everything in here is real — the policies, the numbers, the 7 November election. The only fictional part is you. (Well. Hopefully.)</p>
+        <p><b>You're the landlord.</b> Put down a deposit, let the bank lend you the rest, squeeze your tenants, and launder your reputation through politics until you're appointed <b>Minister of Housing</b> — before Public Scrutiny redlines and the exposé ends your run.</p>
+        <p style="color:var(--muted);font-size:.9em;">Everything in here is real — the prices, the lending rules, the 7 November election. The only fictional part is you. (Well. Hopefully.)</p>
     `, [
         { label:'How to play', cls:'ghost', fn:()=> modalHelp() },
         { label:'Start squeezing →', cls:'primary', fn:()=> closeModal() },
     ]);
 }
-
 function modalHelp(){
     showModal(`
         <div class="modal-kicker">How to build an empire</div>
         <h1>The loop 🔁</h1>
-        <p><b>1. Acquire property.</b> Passive rent is your base. Each purchase removes a home from the market — that's not a bug. Use the ×1 / ×10 / Max buttons to buy in bulk.</p>
-        <p><b>2. Optimise (Operations).</b> Squeeze tenants for cash. Every squeeze raises <span style="color:#b25a15;font-weight:700">Scrutiny</span> — the public heat meter up top.</p>
-        <p><b>3. Buy Influence (Politics).</b> Turn cash into political capital, then spend it to <b>Spike the Story</b> and cool your scrutiny before it boils over.</p>
-        <p><b>4. Retain Services.</b> Permanent upgrades that let you squeeze harder for less heat. This is where empires are really built.</p>
-        <p>Let Scrutiny redline with no influence and the <b>exposé</b> ends you. Play it clean and there's a secret ending — good luck finding the appetite for it. Election's 7 November; the houses won't move either way.</p>
+        <p><b>1. Buy on leverage.</b> You don't pay cash for houses — you put down a <b>deposit</b> (investors ~35%) and the bank lends the rest as a mortgage. The debt costs weekly interest, so cheap provincial stock earns, while Auckland &amp; prestige homes <span style="color:var(--red-dark)">bleed cash</span> — you buy those for the capital gain.</p>
+        <p><b>2. The bank is the game.</b> It lends up to <b>7× your income</b>, counting ~78% of your rent — so every rent rise unlocks more borrowing. (A first-home buyer gets 6× and counts none of it. That's the joke, and the mechanic.) New builds dodge the limits entirely.</p>
+        <p><b>3. Squeeze (Operations).</b> Raise rents and invent fees for cash — and borrowing power. Every squeeze raises <span style="color:#b25a15;font-weight:700">Scrutiny</span>.</p>
+        <p><b>4. Buy Influence (Politics) &amp; Retain Services.</b> Turn cash into political capital to spike stories and rewrite the rules. Watch the OCR — a rate hike lifts everyone's mortgage and can trigger the <b>Market Correction</b>.</p>
     `, [{ label:'Let\'s ruin some lives', cls:'primary', fn:()=> closeModal() }]);
 }
 
@@ -1233,7 +1228,7 @@ function shareStats(){
     const txt = `🏠 KIWI LANDLORD EMPIRE
 
 I became: ${phaseInfo().name}
-💰 Net worth: ${money(netWorth())}
+💰 Net worth: ${money(netWorth())} (on ${money(state.debt)} of mortgage debt)
 🏚️ Properties: ${propertyCount()}  |  Households: ${fmt(state.tenants)}
 🔥 Public Scrutiny: ${Math.round(state.heat)}%  |  🏛️ ${influenceTitle()}
 
@@ -1245,13 +1240,9 @@ Rap sheet:
 
 A satire of NZ's housing crisis. How dirty are your hands?
 Play: https://chalkybones.github.io/Landlord-game/`;
-
     if (navigator.clipboard){
-        navigator.clipboard.writeText(txt).then(
-            ()=> toast('Rap sheet copied. Share your shame.', 'good'),
-            ()=> { alert(txt); }
-        );
-    } else { alert(txt); }
+        navigator.clipboard.writeText(txt).then(()=> toast('Rap sheet copied. Share your shame.', 'good'), ()=> alert(txt));
+    } else alert(txt);
 }
 
 /* =============================================================== RESET */
@@ -1272,56 +1263,40 @@ function hardReset(){
 }
 
 /* =============================================================== SPEED / MUTE / QTY */
-function setSpeed(s){
-    state.speed = s;
-    state.lastUpdate = now();
-    setSpeedButtons();
-}
+function setSpeed(s){ state.speed = s; state.lastUpdate = now(); setSpeedButtons(); }
 function setSpeedButtons(){
-    document.querySelectorAll('.speed-btn').forEach(b=>{
-        b.classList.toggle('active', parseInt(b.dataset.speed) === state.speed);
-    });
+    document.querySelectorAll('.speed-btn').forEach(b=> b.classList.toggle('active', parseInt(b.dataset.speed) === state.speed));
 }
 function setBuyQty(q){
     state.buyQty = q;
-    document.querySelectorAll('.qty-btn').forEach(b=>{
-        b.classList.toggle('active', b.dataset.qty === String(q));
-    });
+    document.querySelectorAll('.qty-btn').forEach(b=> b.classList.toggle('active', b.dataset.qty === String(q)));
     refresh();
 }
-function toggleMute(){
-    state.muted = !state.muted;
-    $('mute-btn').textContent = state.muted ? '🔇' : '🔊';
-}
+function toggleMute(){ state.muted = !state.muted; $('mute-btn').textContent = state.muted ? '🔇' : '🔊'; }
 
 /* =============================================================== REFRESH */
 function refresh(){
     $('money').textContent = money(state.money);
-    $('income-rate').textContent = '+' + money(weeklyIncome()) + '/wk';
-    $('networth').textContent = 'Net worth: ' + money(netWorth());
+    const cf = netCashflow();
+    const cfEl = $('income-rate');
+    cfEl.textContent = (cf<0?'−':'+') + money(Math.abs(cf)) + '/wk';
+    cfEl.style.color = cf < 0 ? 'var(--red)' : 'var(--green)';
+    $('networth').textContent = `Net worth ${money(netWorth())} · Debt ${money(state.debt)}`;
 
     const ph = phaseInfo();
     $('phase-name').textContent = ph.name;
-
-    // phase-up celebration
     if (state._phaseSeen === undefined) state._phaseSeen = ph.i;
     if (ph.i > state._phaseSeen){
         state._phaseSeen = ph.i;
         toast(`📈 You are now: ${ph.name}`, 'gold');
         addNews(`You've ascended to <b>${ph.name}</b>. The circles you move in now have valet parking and worse ethics.`, 'event');
         blip(420);
-    } else if (ph.i < state._phaseSeen){
-        state._phaseSeen = ph.i;
-    }
+    } else if (ph.i < state._phaseSeen) state._phaseSeen = ph.i;
 
-    // new asset class unlocked
     const unlocked = unlockedTierCount();
     if (state._unlockedSeen === undefined) state._unlockedSeen = unlocked;
     if (unlocked > state._unlockedSeen){
-        for (let i=state._unlockedSeen; i<unlocked; i++){
-            const p = PROPERTIES[i];
-            if (p) toast(`🔓 New asset class: ${p.name}`, 'good');
-        }
+        for (let i=state._unlockedSeen; i<unlocked; i++){ const p = PROPERTIES[i]; if (p) toast(`🔓 New asset class: ${p.name}`, 'good'); }
         state._unlockedSeen = unlocked;
     }
 
@@ -1334,8 +1309,21 @@ function refresh(){
     $('influence').textContent = fmt(state.influence);
     $('influence-title').textContent = influenceTitle();
 
-    for (let i=0;i<updaters.length;i++) updaters[i]();
+    // bank strip
+    const room = borrowable();
+    const bh = $('bank-headroom');
+    if (bh){
+        bh.textContent = propertyCount() === 0
+            ? `🏦 Put ~35% down and the bank funds the rest — a deal a first-home buyer can't get`
+            : (room >= 1000 ? `🏦 The bank will lend you ${money(room)} more`
+                            : `🏦 Bank tapped out — lift your rent roll (or let values rise) to borrow more`);
+        const rel = $('bank-release');
+        if (rel){ rel.disabled = room < 1000; rel.textContent = room >= 1000 ? `Release ${money(room)}` : 'No equity to release'; }
+        const rateEl = $('bank-rate');
+        if (rateEl) rateEl.textContent = `Mortgage rate ${(state.rate*100).toFixed(2)}% · you owe ${money(state.debt)}`;
+    }
 
+    for (let i=0;i<updaters.length;i++) updaters[i]();
     updateTenantStrain();
     updatePrestigeButton();
 }
@@ -1347,19 +1335,14 @@ function tick(){
     state.lastUpdate = t;
     if (state.speed === 0 || state.ended) return;
     if (dt > 1) dt = 1;
-
     const weeksElapsed = dt / state.speed;
-    state.money += weeklyIncome() * weeksElapsed;
-
+    state.money += netCashflow() * weeksElapsed;
     state.weekFrac += weeksElapsed;
     let guard = 0;
     while (state.weekFrac >= 1 && guard < 50){
-        state.weekFrac -= 1;
-        onWeek();
-        guard++;
+        state.weekFrac -= 1; onWeek(); guard++;
         if (state.ended) return;
     }
-
     checkPassiveEndings();
     refresh();
 }
@@ -1372,18 +1355,11 @@ function setupEvents(){
             document.querySelectorAll('.tab-panel').forEach(p=> p.classList.remove('active'));
             tab.classList.add('active');
             document.querySelector(`.tab-panel[data-panel="${tab.dataset.tab}"]`).classList.add('active');
-            if (tab.dataset.tab === 'news'){
-                state._unread = 0;
-                const b = tab.querySelector('.badge'); if (b) b.remove();
-            }
+            if (tab.dataset.tab === 'news'){ state._unread = 0; const b = tab.querySelector('.badge'); if (b) b.remove(); }
         });
     });
-    document.querySelectorAll('.speed-btn').forEach(b=>{
-        b.addEventListener('click', ()=> setSpeed(parseInt(b.dataset.speed)));
-    });
-    document.querySelectorAll('.qty-btn').forEach(b=>{
-        b.addEventListener('click', ()=> setBuyQty(b.dataset.qty === 'max' ? 'max' : parseInt(b.dataset.qty)));
-    });
+    document.querySelectorAll('.speed-btn').forEach(b=> b.addEventListener('click', ()=> setSpeed(parseInt(b.dataset.speed))));
+    document.querySelectorAll('.qty-btn').forEach(b=> b.addEventListener('click', ()=> setBuyQty(b.dataset.qty === 'max' ? 'max' : parseInt(b.dataset.qty))));
     $('save-game').addEventListener('click', ()=> saveGame(false));
     $('share-stats').addEventListener('click', shareStats);
     $('reset-game').addEventListener('click', resetGame);
@@ -1391,9 +1367,8 @@ function setupEvents(){
     $('mute-btn').addEventListener('click', toggleMute);
     $('help-btn').addEventListener('click', modalHelp);
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
-    $('modal-overlay').addEventListener('click', (e)=>{
-        if (e.target === $('modal-overlay') && !state.ended) closeModal();
-    });
+    const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
+    $('modal-overlay').addEventListener('click', (e)=>{ if (e.target === $('modal-overlay') && !state.ended) closeModal(); });
 }
 
 function init(){
@@ -1408,11 +1383,9 @@ function init(){
     setBuyQty(state.buyQty || 1);
     $('mute-btn').textContent = state.muted ? '🔇' : '🔊';
     refresh();
-
     setInterval(tick, 100);
     setInterval(()=> saveGame(true), 20000);
     window.addEventListener('beforeunload', ()=> saveGame(true));
-
     if (!had) setTimeout(modalIntro, 400);
 }
 
