@@ -180,14 +180,26 @@ body {
 .tenant-situation { font-size: .82em; color: var(--ink); background: #eef5f5; border-radius: 8px; padding: 7px 9px; }
 .tenant-rent { font-size: .82em; font-weight: 700; }
 .tenant-rent .rent-num { color: var(--teal-dark); }
-.strain-meter { height: 7px; background: #eadada; border-radius: 4px; overflow: hidden; }
+.strain-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 2px; }
+.strain-cap { font-size: .66em; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 800; }
+.strain-meter { height: 8px; background: #eadada; border-radius: 4px; overflow: hidden; }
 .strain-fill { height: 100%; background: linear-gradient(90deg, #6fbf8f, #E0A500, #D64545); background-size: 300%; transition: width .3s; }
-.strain-label { font-size: .68em; color: var(--muted); text-align: right; }
+.strain-label { font-size: .72em; color: var(--muted); text-align: right; font-weight: 700; }
 .tenant-btn {
-    margin-top: 2px; border: none; border-radius: 8px; padding: 8px; cursor: pointer;
+    margin-top: 4px; border: none; border-radius: 8px; padding: 9px; cursor: pointer;
     background: var(--red); color: #fff; font-weight: 700; font-size: .82em; transition: all .12s;
 }
 .tenant-btn:hover { background: var(--red-dark); transform: translateY(-1px); }
+.tenant-btn.danger { background: var(--coral-dark); animation: pulseHeat 1.1s ease-in-out infinite; }
+.tenant-gone {
+    position: absolute; inset: 0; z-index: 3; border-radius: 12px; padding: 14px;
+    background: rgba(20,32,38,.94); color: #fff; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    animation: fadein .2s ease;
+}
+.tenant-gone .gone-title { font-size: .68em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #ff9b86; }
+.tenant-gone .gone-name { font-size: 1.05em; font-weight: 800; }
+.tenant-gone .gone-sub { font-size: .8em; opacity: .7; }
 
 /* ---------- Tabs ---------- */
 .tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 2px; }
