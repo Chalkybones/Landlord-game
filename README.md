@@ -1,69 +1,56 @@
-# 🏚️ Kiwi Landlord Empire
+# 🏠 Kiwi Landlord Empire
 
-**A biting satirical idle clicker game about New Zealand's housing crisis**
+**A satirical idle game about Aotearoa's housing crisis.**
 
-Play as an exploitative landlord building your property empire while tenants struggle to afford rent. Experience the absurdity of NZ's rental market through the eyes of a slumlord.
+You play a property investor building a rental empire on the "PortfolioMax™" platform — a cheerful fintech dashboard that delivers genuine human misery as good news. Squeeze your tenants, launder your reputation through politics, and try to become Minister of Housing before the exposé drops.
 
 ## 🎮 Play Now
 
 [**Play Kiwi Landlord Empire**](https://chalkybones.github.io/Landlord-game/)
 
-## 🎯 Game Features
+## 🔁 The Loop (this is the game, and the joke)
 
-### Build Your Empire
-- **5 Property Types**: From Mouldy Flats to Entire Apartment Blocks
-- **Progressive Unlocking**: Expand your portfolio as you exploit more tenants
-- **Idle Mechanics**: Money rolls in even when you're not playing
+> **Deposit + mortgage → squeeze tenants → cash & borrowing power → buy political influence → suppress scrutiny & deregulate → leverage up and squeeze harder.**
 
-### Evil Actions
-- Raise rents without justification
-- Ignore Healthy Homes Standards
-- Issue 90-day no-cause evictions
-- Convert rentals to Airbnb
-- Demand pet bonds for goldfish
-- And more morally bankrupt options!
+Wealth buys the political immunity that lets the extraction escalate — and the bank buys you the homes a first-home buyer will never be lent. That's not a bug in the design; it's the argument.
 
-### Political Corruption
-- Bribe local councillors
-- Donate to politicians
-- Suppress media investigations
-- Climb from "Civilian Scumbag" to "Chris Bishop 2.0"
+- **Buy on leverage, like real landlords do.** You don't pay cash for houses — you put down a **deposit** (investors ~35%) and the bank lends the rest as a **mortgage**. The debt costs weekly interest, so cheap provincial stock earns while Auckland and prestige homes bleed cash (you buy those for the capital gain). Prices, rents, LVR/DTI limits, the OCR and the 7 November election are all modelled on real 2026 Aotearoa.
+- **The bank is the mechanic *and* the satire.** It lends up to **7× your income**, counting ~78% of your rent — so every rent rise unlocks more borrowing. A first-home buyer gets 6× and counts none of it. New builds dodge the deposit and debt limits entirely. Watch the OCR: a rate hike lifts everyone's mortgage and can trigger the Market Correction.
+- **Acquire property.** Rent is your base. Every purchase quietly removes a home from the market.
+- **Optimise (Operations).** Raise rents, invent fees, ignore Healthy Homes, evict without cause. Each earns cash — and raises **Public Scrutiny**, the heat meter up top.
+- **Buy Influence (Politics).** Turn cash into political capital, then spend it to *Spike the Story* and cool your scrutiny before it boils over.
+- **Retain Services.** Permanent upgrades that let you squeeze harder for less heat — the Meth-Test Grift Kit, the Accommodation-Supplement Harvester, the Astroturf Renters' Group, the Family Trust Restructure.
 
-### Dynamic Gameplay
-- **50+ Satirical Headlines**: Fictional but frighteningly realistic news
-- **12 Random Events**: Market crashes, inspections, tenant unions, earthquakes
-- **4 Different Endings**: Can you become Housing Minister? Or will you face justice?
-- **Moral Compass System**: Track your descent from "Questionably Kiwi" to "Absolute Scum"
+Let scrutiny redline with no influence to spend and the **exposé** ends you. Over-leverage and the **market correction** bankrupts you. Reach the top and you're appointed **Minister of Housing** to oversee the very system you plundered.
+
+There's also a **secret ending** for playing clean — if you can find the appetite for it.
+
+## 🧑‍🤝‍🧑 Featured Tenants
+
+Not a counter — people. Named, procedurally-generated households with jobs and situations (the palliative-care nurse commuting 90 minutes; the family on the Kāinga Ora waitlist for three years). You can squeeze them by name. They can break. It is meant to make you flinch.
 
 ## 🎭 About
 
-This game is a **satirical commentary** on New Zealand's housing affordability crisis, exploitative landlord practices, and the political systems that enable them.
+This is satire, aimed at a real housing system: no-cause evictions, the meth-testing scandal, Healthy Homes non-compliance, the accommodation supplement flowing straight to landlords, land-banking, Airbnb conversions, algorithmic rent-setting, and a political class that takes property money across the aisle. Public figures appear only in reference to documented public events. The exaggeration is for effect; the underlying issues are very real.
 
-While the headlines are fictional, they reflect real experiences of renters across Aotearoa. The game exaggerates for effect, but the underlying issues are very real.
+## 🛠️ Technical
 
-## 🛠️ Technical Details
-
-- Pure HTML/CSS/JavaScript (no frameworks)
-- Runs entirely in browser
-- Auto-saves to localStorage
-- Mobile-friendly
-- No tracking or analytics
-
-## 📱 Share Your Empire
-
-The game includes a "Share My Evil Empire" feature to export your shameful statistics and share on social media.
+- Pure HTML/CSS/JavaScript, no frameworks, no build step.
+- Runs entirely in the browser; auto-saves to `localStorage` with offline progress.
+- Fully data-driven — properties, operations, services, politics, events, and endings all live in tables at the top of `game.js`. Adding content means adding an array entry.
+- Mobile-friendly. No tracking, no analytics.
 
 ## 🤝 Contributing
 
-Found a bug? Have ideas for more satirical headlines or events? Open an issue or submit a PR!
+Ideas for sharper headlines, new events, or extra services are welcome — open an issue or a PR. The satire is best when it's specific.
 
 ## ⚖️ Disclaimer
 
-This is a work of satire. No actual landlords, politicians, or tenants were harmed in the making of this game (though plenty of real tenants are harmed by real housing policies).
+A work of satire. No actual landlords, politicians, or tenants were harmed in the making of this game — unlike in the housing market it's about.
 
 ## 📄 License
 
-MIT License - Feel free to fork, modify, and share.
+MIT — fork it, modify it, share it.
 
 ---
 
