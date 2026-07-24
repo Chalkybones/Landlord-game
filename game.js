@@ -111,12 +111,12 @@ const OPERATIONS = [
       news:s => `Bond retained for "professional cleaning," performed by the next tenant, unpaid, under duress.` },
 
     { id:'overseas', emoji:'🌏', name:'Sell to a Golden-Visa Buyer', heat:6, infl:8, needProperty:2,
-      sellTop:2.2,
-      desc:'The foreign-buyer ban was part-lifted in early 2026: Active Investor Plus migrants may buy $5m+ homes. ~40% are Americans wanting a "Plan B." Clears the mortgage and banks the gain.',
+      sell:'market',
+      desc:'The foreign-buyer ban was part-lifted in early 2026: Active Investor Plus migrants may buy $5m+ homes. ~40% are Americans wanting a "Plan B." Clears the mortgage and banks any capital gain.',
       news:s => `$5m villa sold to an offshore investor-migrant as a doomsday bunker. It stays dark. Spain scrapped its golden visa over this; we mailed ours a fruit basket.` },
 
     // Redemption path — appears only while your hands are relatively clean.
-    { id:'sellFHB', emoji:'🕊️', name:'Sell to the Tenants (at cost)', heat:-18, sellTop:1.0, fhb:true,
+    { id:'sellFHB', emoji:'🕊️', name:'Sell to the Tenants (at cost)', heat:-18, sell:'cost', fhb:true,
       needProperty:2, hideIf:s => s.evictions>0 || heatTier().i>=2,
       desc:'Sell a home to the family living in it, for what you paid — forgoing the golden-visa premium. You lose the gain. They lose the fear.',
       news:s => `Landlord sells to sitting tenants at cost. NZPIF calls him "unwell." The tenants call him the best they ever had — a devastating review of everyone else.` },
@@ -444,21 +444,17 @@ function unitNet(p){
     return op - interest;
 }
 
-/* bulk-buy planning: deposit + loan, gated by cash and (for non-new-builds) DTI */
+/* bulk-buy planning: prices are fixed, so compute the affordable count directly
+   (gated by cash for the deposit and — for non-new-builds — the DTI headroom). */
 function plannedBuy(prop){
-    const st = state.properties[prop.id];
-    const dtiRoom = prop.newBuild ? Infinity : dtiHeadroom();
-    const cap = state.buyQty === 'max' ? 9999 : state.buyQty;
-    let n = 0, price = st.cost, depTotal = 0, loanTotal = 0;
-    while (n < cap){
-        const dep = Math.floor(price * prop.deposit);
-        const loan = price - dep;
-        if (depTotal + dep > state.money) break;
-        if (loanTotal + loan > dtiRoom) break;
-        depTotal += dep; loanTotal += loan;
-        price = Math.floor(price * prop.mult); n++;
-    }
-    return { n, deposit: depTotal, loan: loanTotal, priceEach: st.cost };
+    const price = prop.price;
+    const dep = Math.floor(price * prop.deposit);
+    const loan = price - dep;
+    const cap = state.buyQty === 'max' ? 500 : state.buyQty;   // hard cap per click
+    let n = Math.min(cap, dep > 0 ? Math.floor(state.money / dep) : cap);
+    if (!prop.newBuild) n = Math.min(n, loan > 0 ? Math.floor(dtiHeadroom() / loan) : n);
+    n = Math.max(0, n);
+    return { n, deposit: n * dep, loan: n * loan, priceEach: price };
 }
 function buyBlockReason(prop){
     const st = state.properties[prop.id];
@@ -483,7 +479,12 @@ function loadGame(){
     try {
         const loaded = JSON.parse(raw);
         state = Object.assign(defaultState(), loaded);
-        PROPERTIES.forEach(p => { if (!state.properties[p.id]) state.properties[p.id] = { count:0, cost:p.price }; });
+        PROPERTIES.forEach(p => {
+            if (!state.properties[p.id]) state.properties[p.id] = { count:0, cost:p.price };
+            state.properties[p.id].cost = p.price;   // prices are fixed — heal any legacy escalated value
+        });
+        if (typeof state.dtiDebt !== 'number') state.dtiDebt = state.debt || 0;
+        if (typeof state.basis !== 'number') state.basis = 0;
         state.upgrades = state.upgrades || {};
         state.onceUsed = state.onceUsed || {};
         state.featured = state.featured || [];
@@ -602,7 +603,7 @@ function opTags(op){
     if (op.cost) t.push(`<span class="tag cost">−${money(op.cost)}</span>`);
     if (op.money){ const v = op.money(state, multipliers()); if (v) t.push(`<span class="tag ${v<0?'cost':'money'}">${v<0?'−':'+'}${money(Math.abs(v))}</span>`); }
     if (op.rentBoost) t.push(`<span class="tag money">+${Math.round(op.rentBoost*100)}% rent</span>`);
-    if (op.sellTop) t.push(`<span class="tag money">sell @ ${op.sellTop}×</span>`);
+    if (op.sell) t.push(`<span class="tag money">${op.sell==='cost'?'sell at cost':'sell → cash'}</span>`);
     if (op.heat) t.push(`<span class="tag ${op.heat<0?'money':'heat'}">${op.heat<0?'':'+'}${op.heat} heat</span>`);
     if (op.infl) t.push(`<span class="tag infl">+${op.infl} infl</span>`);
     return t.join('');
@@ -763,10 +764,8 @@ function buyProperty(id, e){
     state.money -= plan.deposit;
     state.debt += plan.loan;
     if (!p.newBuild) state.dtiDebt += plan.loan;
-    // add cost basis at the escalated prices actually paid
-    let price = st.cost;
-    for (let i=0;i<plan.n;i++){ st.count++; state.basis += price; price = Math.floor(price * p.mult); }
-    st.cost = price;
+    st.count += plan.n;
+    state.basis += plan.n * p.price;
 
     fx('−'+money(plan.deposit)+' down', 'neg', e);
     blip(180);
@@ -819,7 +818,7 @@ function doOperation(op, e){
     if (op.id === 'inventFee') state.feesInvented++;
     if (op.evicts){ state.evictions++; evictSomeone(); }
     if (op.removesHousehold){ state.extraUnits = Math.max(state.extraUnits-1, -baseTenantsFromProps()+1); }
-    if (op.sellTop){ const sc = sellTopProperty(op.sellTop); if (sc) fx('+'+money(sc), 'pos', e); }
+    if (op.sell){ const sc = sellTopProperty(op.sell === 'cost'); if (sc) fx('+'+money(sc), 'pos', e); }
     if (op.fhb){ state.fhbSales++; checkRedemption(); }
 
     if (op.strain) state.featured.forEach(t=> t.strain = clamp(t.strain + op.strain, 0, 100));
@@ -830,15 +829,18 @@ function doOperation(op, e){
     refresh();
 }
 
-/* sell one unit of the priciest owned type; clears its share of debt */
-function sellTopProperty(premium){
+/* sell one unit of the priciest owned type; clears its share of the mortgage.
+   'market' realises current value (appreciation included); 'cost' sells at the
+   price you paid (you forgo the gain). No windfall premium — that was an
+   arbitrage: 35% down + a >1× sale = buy-then-flip infinite money. */
+function sellTopProperty(atCost){
     let best = 0, id = null;
     PROPERTIES.forEach(p=>{ if (state.properties[p.id].count>0 && p.price>best){ best=p.price; id=p.id; } });
     if (!id) return 0;
     const p = PROPERTIES.find(x=>x.id===id);
-    const value = p.price * state.marketIndex;
+    const sale = atCost ? p.price : p.price * state.marketIndex;
     const loanShare = Math.min(state.debt, p.price * (1 - p.deposit));
-    const cashOut = Math.max(0, value * premium - loanShare);
+    const cashOut = Math.max(0, sale - loanShare);
     state.properties[id].count--;
     state.debt = Math.max(0, state.debt - loanShare);
     if (!p.newBuild) state.dtiDebt = Math.max(0, state.dtiDebt - loanShare);
@@ -1045,7 +1047,9 @@ const EVENTS = [
 function checkPassiveEndings(){
     if (state.ended) return;
     if (netWorth() >= 400000000){ triggerEnding('empire'); return; }
-    if (state.money < -120000){ triggerEnding('collapse'); return; }
+    // insolvency: you owe more than everything you own is worth (scales at every level,
+    // so a transient cash dip from one event can't falsely end an asset-rich player)
+    if (netWorth() < -50000){ triggerEnding('collapse'); return; }
 }
 function checkRedemption(){
     if (state.fhbSales >= 3 && state.evictions === 0){ triggerEnding('reform'); }
