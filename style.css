@@ -362,21 +362,110 @@ body {
 .modal-btn.gold { background: var(--gold); color: #3a2b00; }
 .modal-btn.gold:hover { background: var(--gold-dark); color: #fff; }
 
-/* ---------- Responsive ---------- */
-@media (max-width: 780px) {
+/* ---------- Responsive: tablet ---------- */
+@media (max-width: 780px) and (min-width: 701px) {
     .dashboard { grid-template-columns: 1fr; }
-    .phase-badge { padding: 6px 10px; }
-    .brand-tag { display: none; }
-    .stat-big { font-size: 1.7em; }
     .footer { flex-direction: column; align-items: stretch; }
     .footer-meta { text-align: center; }
 }
-@media (max-width: 480px) {
-    .app { padding: 12px 10px 50px; }
-    .topbar { flex-wrap: wrap; }
-    .phase-badge { margin-left: 0; order: 3; width: 100%; text-align: center; }
-    .tab { padding: 9px 10px; font-size: .82em; }
+
+/* ---------- Responsive: phone (app-style layout) ---------- */
+@media (max-width: 700px) {
+    .app { padding: 10px 10px 84px; }   /* bottom pad clears the fixed tab bar */
+
+    /* compact header */
+    .topbar { padding: 10px 12px; gap: 10px; border-radius: 12px; margin-bottom: 10px; }
+    .brand-mark { width: 36px; height: 36px; font-size: 1.2em; border-radius: 9px; }
+    .brand-name { font-size: 1.1em; }
+    .brand-tag { display: none; }
+    .phase-badge { margin-left: auto; padding: 5px 10px; }
+    .phase-label { display: none; }
+    .phase-name { font-size: .82em; }
+    .icon-btn { width: 32px; height: 32px; }
+
+    /* slim objective HUD: one swipeable row, drop the redundant How-to-play (use ? ) */
+    .objective { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding: 8px 10px; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
+    .objective::-webkit-scrollbar { display: none; }
+    .obj-chip { flex: 0 0 auto; font-size: .72em; padding: 5px 10px; white-space: nowrap; }
+    .obj-how { display: none; }
+
+    /* compact dashboard: cash hero, scrutiny + influence share a row */
+    .dashboard { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .cash-tile { grid-column: 1 / -1; }
+    .stat-tile { padding: 12px 14px; }
+    .stat-big { font-size: 1.55em; }
+    .stat-label { font-size: .66em; }
+    .scrutiny-tile .stat-foot, .influence-tile .stat-foot { display: none; }
+    .influence-tile .stat-big { font-size: 1.35em; }
+    .meter { height: 16px; margin: 6px 0 0; }
+
+    /* speed controls: tighter */
+    .speed-controls { padding: 7px 8px; gap: 6px; margin-bottom: 10px; }
+    .speed-caption { display: none; }
+    .speed-btn { padding: 8px 8px; font-size: .8em; flex: 1; }
+
+    /* panels a touch tighter */
+    .panel { padding: 15px 14px; margin-bottom: 10px; }
+    .panel-head h2 { font-size: 1.08em; }
+
+    /* featured tenants: swipeable carousel */
+    .tenants-strip .panel-hint { display: none; }
+    .tenant-cards { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; scroll-snap-type: x mandatory; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+    .tenant-card { flex: 0 0 84%; scroll-snap-align: start; }
+
+    /* card & action lists: single column, roomy touch targets */
+    .card-list, .action-list { grid-template-columns: 1fr; }
+    .buy-btn, .action-btn, .tenant-btn { min-height: 46px; }
+    .tab, .qty-btn, .speed-btn, .bank-release, .utility-btn { min-height: 40px; }
+
+    /* bank strip stacks */
+    .bank-strip { flex-wrap: wrap; }
+    .bank-release { width: 100%; order: 3; }
+
+    /* footer */
+    .footer { flex-direction: column; align-items: stretch; gap: 10px; }
+    .footer-meta { text-align: center; }
+
+    /* ===== app-style bottom tab bar ===== */
+    .tabs {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 800;
+        margin: 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+        background: rgba(255,255,255,.97); backdrop-filter: blur(8px);
+        border-top: 1px solid var(--line); box-shadow: 0 -3px 16px rgba(6,59,62,.10);
+        gap: 3px; overflow: visible;
+    }
+    .tab {
+        position: relative; flex: 1; min-width: 0; flex-direction: column; gap: 2px;
+        padding: 6px 2px; border: none; border-radius: 12px; background: transparent;
+        color: var(--muted); font-weight: 700;
+    }
+    .tab:hover { border: none; }
+    .tab-ico { font-size: 1.35em; line-height: 1; }
+    .tab-lbl { font-size: .64em; letter-spacing: 0; }
+    .tab.active { background: var(--teal-ink); color: #fff; }
+    .tab .badge { position: absolute; top: 3px; right: 18%; margin: 0; min-width: 16px; font-size: .62em; }
+
+    /* modal fits small screens */
+    .modal { padding: 22px 18px; border-radius: 16px; max-height: 90vh; }
+    .modal h1 { font-size: 1.4em; }
+    .modal-actions { position: sticky; bottom: -22px; background: #fff; padding-top: 10px; }
+    .modal-btn { min-height: 46px; }
+
+    /* toasts don't collide with the tab bar */
+    .toast-layer { bottom: 78px; right: 10px; left: 10px; align-items: stretch; }
+    .toast { max-width: none; }
 }
+
+/* very small phones */
+@media (max-width: 360px) {
+    .tab-lbl { font-size: .58em; }
+    .stat-big { font-size: 1.4em; }
+    .brand-name { font-size: 1em; }
+}
+
+/* desktop: small gap between tab icon and label */
+.tab-ico { margin-right: 5px; }
+@media (max-width: 700px) { .tab-ico { margin-right: 0; } }
 
 /* ---------- Scrollbar ---------- */
 ::-webkit-scrollbar { width: 9px; height: 9px; }
