@@ -24,7 +24,7 @@ const CFG = {
     BASE_HEAT_DECAY: 2.5,      // scrutiny lost per week with no help
     HEAT_MAX: 100,
     OFFLINE_CAP_HOURS: 8,
-    NEWS_COOLDOWN: 8,
+    NEWS_COOLDOWN: 24,
     EVENT_COOLDOWN: 6,
     SAVE_KEY: 'kiwiLandlordEmpire_v2',
     LEGACY_BONUS: 0.15,        // +15% permanent rent per Restructure
@@ -293,13 +293,45 @@ const HEADLINES = [
     'Cheapest one-year fixed now 4.65%. "Refix anxiety" enters the vernacular. Landlords forward the cost to tenants and the blame to the RBNZ.',
     'OneRoof declares "the death of the Kiwi do-up": buy ugly, not broken. The broken ones, naturally, become rentals.',
     'Investor seminar sells out: "Leverage Their Rent Into Your Sixth House." The nurse in row six is here by mistake; she thought it was a job fair.',
+    'Landlord lists a "sunny" flat facing a brick wall. Pressed, he confirms the sun does technically exist.',
+    'Heat pump fixed after 14 months. Tenant billed a "responsiveness surcharge" for the reminder emails.',
+    'Property manager inspects a flat and notes "tenant appears to live here." Recommends a rent review.',
+    'First-home buyer saves a 20% deposit. The house goes up 21%. She is congratulated for "nearly making it."',
+    'Investor buys his childhood home and rents it back to the family that raised him. Calls it "keeping it local."',
+    'Council debates housing density for six hours, then votes to form a working group to schedule a consultation.',
+    'The bank approves a landlord\'s ninth mortgage in the time it takes a renter to be declined for a one-year lease.',
+    'Rent bidding, banned in 2021, quietly returns as "voluntary generosity above the advertised price."',
+    'Wellington flat advertised "partly furnished." The part is one chair, facing the mould, like a therapist.',
+    'Emergency-housing motel hits capacity. The quarterly update celebrates "strong occupancy."',
+    'Landlord raises the rent to "match the market." The market is a group chat of four other landlords.',
+    'New townhouse block sells out in a weekend — zero to owner-occupiers, all to "the sector," warmly.',
+    'Study links cold rentals to hospital admissions. Landlords cite it as proof tenants should "wear more."',
+    'Tenant requests curtains. Landlord installs "a privacy expectation" instead.',
+    'Auckland median dips under $1m for a week. Property pages declare a "once-in-a-lifetime window," for the ninth time.',
+    'Retiree with three rentals tells breakfast TV that young people should "give up brunch." The house costs 400,000 brunches.',
+    'Body-corporate fees rise 30%. The body corporate is one man named Trevor, a clipboard, and a grievance.',
+    'Periodic tenancy ended for "renovations." The same flat is re-listed a week later, unrenovated, +$120.',
+    'Bond returned after seven months, minus a deduction for a mark "already there." The photos are dismissed as "lighting."',
+    'The Reserve Bank warns of "investor exuberance." Investors, exuberant, buy the warning and rent it out.',
+    'Open home draws a queue around the block for a single bedroom. The listing calls the queue "a vibrant community."',
+    'Renter with a perfect record loses the flat to the owner\'s nephew, who needed somewhere "just for a bit."',
 ];
+
+/* pick a headline that hasn't shown in the last ~14, so repeats stay rare */
+let _recentNews = [];
+function pickHeadline(){
+    let h, tries = 0;
+    do { h = pick(HEADLINES); tries++; } while (_recentNews.indexOf(h) !== -1 && tries < 24);
+    _recentNews.push(h);
+    if (_recentNews.length > 14) _recentNews.shift();
+    return h;
+}
 
 /* ----------------------------------------------------------------------- ADS
    "Sponsored" fake brands — GTA-flavoured flat posters, but NZ-housing real.
    Rotate in a banner and occasionally drop into the news feed. */
 const ADS = [
-    { logo:'🏦', brand:'Fleeca Home Loans', hue:'teal',
+    { logo:'🏦', brand:'EquityMate Home Loans', hue:'teal',
       tagline:'7× your income. 0× your chances.', fine:'You will never own this home. Fees apply, as does gravity.' },
     { logo:'🧪', brand:'Meth-B-Gone™', hue:'green',
       tagline:'We test. We find. You bill the tenant.', fine:'Positive in 3 seconds, results in 3 weeks, bond withheld either way.' },
@@ -973,11 +1005,11 @@ function onWeek(){
     state.featured.forEach(t=>{ t.strain = clamp(t.strain + (Math.random()<0.5?0.4:0), 0, 100); });
 
     const nowS = now()/1000;
-    if (nowS - (state._lastNews||0) > CFG.NEWS_COOLDOWN && Math.random() < 0.35){
-        addNews(pick(HEADLINES)); state._lastNews = nowS;
+    if (nowS - (state._lastNews||0) > CFG.NEWS_COOLDOWN && Math.random() < 0.3){
+        addNews(pickHeadline()); state._lastNews = nowS;
     }
     // occasional "sponsored" drop between the headlines (radio-ad energy)
-    if (nowS - (state._lastAd||0) > 22 && Math.random() < 0.12){
+    if (nowS - (state._lastAd||0) > 55 && Math.random() < 0.08){
         const ad = pick(ADS);
         addNews(`<span class="spon-tag">SPONSORED</span> <b>${ad.brand}</b> — ${ad.tagline} <span class="spon-fine">${ad.fine}</span>`, 'sponsored');
         state._lastAd = nowS;
