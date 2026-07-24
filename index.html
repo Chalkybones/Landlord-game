@@ -79,7 +79,7 @@
         <div class="speed-controls">
             <span class="speed-caption">Market speed</span>
             <button class="speed-btn" data-speed="0">⏸ Pause</button>
-            <button class="speed-btn active" data-speed="6">▶ Normal</button>
+            <button class="speed-btn active" data-speed="5">▶ Normal</button>
             <button class="speed-btn" data-speed="3">⏩ Fast</button>
             <button class="speed-btn" data-speed="1">⏭ Ludicrous</button>
         </div>
@@ -111,6 +111,12 @@
                     <div class="panel-head">
                         <h2>Acquire Property</h2>
                         <span class="panel-hint">Each purchase removes a home from the market. That's the business model.</span>
+                        <div class="buyqty" id="buyqty">
+                            <span class="buyqty-label">Buy</span>
+                            <button class="qty-btn active" data-qty="1">×1</button>
+                            <button class="qty-btn" data-qty="10">×10</button>
+                            <button class="qty-btn" data-qty="max">Max</button>
+                        </div>
                     </div>
                     <div id="properties-list" class="card-list"></div>
                 </div>
@@ -166,7 +172,7 @@
                 <button id="reset-game" class="utility-btn danger">☠ Reset</button>
             </div>
             <div class="footer-meta">
-                <span class="version">v1.0 — The Landlord's Game</span>
+                <span class="version">v1.1 — Election Year Edition</span>
                 <span class="disclaimer">Satire. The horrors, however, are load-bearing.</span>
             </div>
         </footer>

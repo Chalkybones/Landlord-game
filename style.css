@@ -128,6 +128,11 @@ body {
 .panel-head { margin-bottom: 14px; }
 .panel-head h2 { font-size: 1.18em; color: var(--teal-ink); letter-spacing: -.01em; }
 .panel-hint { display: block; font-size: .82em; color: var(--muted); margin-top: 2px; }
+.buyqty { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.buyqty-label { font-size: .72em; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; margin-right: 2px; }
+.qty-btn { padding: 5px 12px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 8px; cursor: pointer; font-size: .82em; font-weight: 700; transition: all .12s; }
+.qty-btn:hover { border-color: var(--teal-light); }
+.qty-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
 .muted { color: var(--muted); font-weight: 400; font-size: .8em; }
 .empty-note { color: var(--muted); font-style: italic; padding: 14px; text-align: center; }
 
