@@ -1373,6 +1373,7 @@ function setupEvents(){
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
     $('modal-overlay').addEventListener('click', (e)=>{ if (e.target === $('modal-overlay') && !state.ended) closeModal(); });
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !state.ended) closeModal(); });
 }
 
 function init(){
