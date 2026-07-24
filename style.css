@@ -15,6 +15,11 @@
     --red: #D64545;
     --red-dark: #a82f2f;
     --green: #2FA36B;
+    /* GTA-inspired warm accents (sun-soaked duotone against the teal) */
+    --coral: #ef6a4d;
+    --coral-dark: #c84e35;
+    --amber: #e88a1a;
+    --plum: #7b5ea7;
     --ink: #17242b;
     --muted: #6a7c84;
     --line: #e2eaec;
@@ -283,7 +288,34 @@ body {
 .news-item.good { border-left-color: var(--green); }
 .news-item.bad { border-left-color: var(--red); }
 .news-item.event { border-left-color: var(--gold); background: #fdf9ee; }
+.news-item.sponsored { border-left-color: var(--coral); background: linear-gradient(90deg, #fff4f0, #fff); }
 .news-item .stamp { font-size: .74em; color: var(--muted); font-weight: 700; margin-right: 6px; }
+.spon-tag { font-size: .62em; font-weight: 800; letter-spacing: .1em; background: var(--coral); color: #fff; padding: 1px 6px; border-radius: 5px; margin-right: 6px; vertical-align: middle; }
+.spon-fine { color: var(--muted); font-style: italic; }
+
+/* ---------- Sponsored ad banner (GTA-flavoured flat poster) ---------- */
+.ad-banner {
+    display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none;
+    background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--teal);
+    border-radius: 12px; padding: 9px 14px; margin-bottom: 14px; box-shadow: var(--shadow);
+    position: relative; overflow: hidden; transition: opacity .22s ease, transform .1s ease;
+}
+.ad-banner:active { transform: scale(.995); }
+.ad-banner::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, transparent 55%, var(--ad-wash, transparent)); }
+.ad-tag { flex-shrink: 0; font-size: .6em; font-weight: 800; letter-spacing: .12em; background: var(--ink); color: #fff; padding: 3px 7px; border-radius: 5px; }
+.ad-logo { flex-shrink: 0; width: 38px; height: 38px; display: grid; place-items: center; font-size: 1.35em; border-radius: 9px; background: var(--ad-soft, #eef5f5); }
+.ad-text { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.25; }
+.ad-text b { font-size: .92em; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; color: var(--ad-ink, var(--teal-dark)); }
+.ad-tagline { font-size: .86em; color: var(--ink); }
+.ad-fine { flex-shrink: 0; max-width: 34%; text-align: right; font-size: .72em; font-style: italic; color: var(--muted); }
+/* hue variants */
+.ad-hue-teal  { border-left-color: var(--teal);  --ad-ink: var(--teal-dark);  --ad-soft: #e5f2f2; --ad-wash: rgba(0,133,142,.07); }
+.ad-hue-coral { border-left-color: var(--coral); --ad-ink: var(--coral-dark); --ad-soft: #fdeae4; --ad-wash: rgba(239,106,77,.09); }
+.ad-hue-amber { border-left-color: var(--amber); --ad-ink: #a9640a;           --ad-soft: #fcf0dc; --ad-wash: rgba(232,138,26,.09); }
+.ad-hue-green { border-left-color: var(--green); --ad-ink: #1c7a4a;           --ad-soft: #e4f6ec; --ad-wash: rgba(47,163,107,.08); }
+.ad-hue-plum  { border-left-color: var(--plum);  --ad-ink: #5c4487;           --ad-soft: #efeaf7; --ad-wash: rgba(123,94,167,.09); }
+.ad-hue-red   { border-left-color: var(--red);   --ad-ink: var(--red-dark);   --ad-soft: #fdeaea; --ad-wash: rgba(214,69,69,.08); }
 
 /* ---------- Footer ---------- */
 .footer {
@@ -421,6 +453,11 @@ body {
     /* bank strip stacks */
     .bank-strip { flex-wrap: wrap; }
     .bank-release { width: 100%; order: 3; }
+
+    /* ad banner: compact, drop the fine print */
+    .ad-banner { padding: 8px 12px; gap: 10px; }
+    .ad-fine { display: none; }
+    .ad-logo { width: 34px; height: 34px; }
 
     /* footer */
     .footer { flex-direction: column; align-items: stretch; gap: 10px; }

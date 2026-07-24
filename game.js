@@ -295,6 +295,36 @@ const HEADLINES = [
     'Investor seminar sells out: "Leverage Their Rent Into Your Sixth House." The nurse in row six is here by mistake; she thought it was a job fair.',
 ];
 
+/* ----------------------------------------------------------------------- ADS
+   "Sponsored" fake brands — GTA-flavoured flat posters, but NZ-housing real.
+   Rotate in a banner and occasionally drop into the news feed. */
+const ADS = [
+    { logo:'🏦', brand:'Fleeca Home Loans', hue:'teal',
+      tagline:'7× your income. 0× your chances.', fine:'You will never own this home. Fees apply, as does gravity.' },
+    { logo:'🧪', brand:'Meth-B-Gone™', hue:'green',
+      tagline:'We test. We find. You bill the tenant.', fine:'Positive in 3 seconds, results in 3 weeks, bond withheld either way.' },
+    { logo:'💳', brand:'AfterYay', hue:'coral',
+      tagline:'Buy your bond now, panic in 4 easy instalments.', fine:'Missed a payment? So did your landlord — on the maintenance.' },
+    { logo:'🛎️', brand:'Air-Boomer B&B', hue:'amber',
+      tagline:'Superhost your nan\'s third investment property.', fine:'A nurse used to live here. Now: a stag do from Ballarat.' },
+    { logo:'📈', brand:'Bright-Line Flippers', hue:'plum',
+      tagline:'Buy it, hold it 24 months, flip it tax-free.', fine:'Housing is a sport now. No losers — except the players.' },
+    { logo:'🏚️', brand:'Kāinga Ora Clearance', hue:'red',
+      tagline:'State homes. Everything must go. 40% off.', fine:'To approved mates only. The waitlist is not invited.' },
+    { logo:'🌡️', brand:'Cosy Kiwi Rentals', hue:'teal',
+      tagline:'"Warm & Dry."*', fine:'*Not warm. Not dry. Legally required to imply otherwise.' },
+    { logo:'🐎', brand:'Winston’s Racing Syndicate', hue:'amber',
+      tagline:'Invest in a horse, receive a housing policy.', fine:'The horse has better odds than a first-home buyer.' },
+    { logo:'🔨', brand:'The Do-Up Academy', hue:'coral',
+      tagline:'Retire on their rent. Deductibility is back, baby.', fine:'Seminar $499. The knowledge is free; the confidence, priceless.' },
+    { logo:'📱', brand:'Trade-Moi Property+', hue:'green',
+      tagline:'Outbid a nurse from the comfort of your phone.', fine:'47 others are watching this listing. One is a bot. Two are you.' },
+    { logo:'⚖️', brand:'Loophole & Sons, Consents', hue:'plum',
+      tagline:'The RMA is 900 pages. We’ve read the good bits.', fine:'Your dinner in Herne Bay is 100% deductible. So is our silence.' },
+    { logo:'✈️', brand:'Brisbane Departures Ltd', hue:'red',
+      tagline:'Same rent. Wages that aren’t a dare.', fine:'Everyone you know is already on the 6am flight. Window seat?' },
+];
+
 /* --------------------------------------------------------------------- STATE */
 let state;
 
@@ -946,6 +976,12 @@ function onWeek(){
     if (nowS - (state._lastNews||0) > CFG.NEWS_COOLDOWN && Math.random() < 0.35){
         addNews(pick(HEADLINES)); state._lastNews = nowS;
     }
+    // occasional "sponsored" drop between the headlines (radio-ad energy)
+    if (nowS - (state._lastAd||0) > 22 && Math.random() < 0.12){
+        const ad = pick(ADS);
+        addNews(`<span class="spon-tag">SPONSORED</span> <b>${ad.brand}</b> — ${ad.tagline} <span class="spon-fine">${ad.fine}</span>`, 'sponsored');
+        state._lastAd = nowS;
+    }
     const eventProb = 0.03 + (state.heat/100) * 0.4;
     if (nowS - (state._lastEvent||0) > CFG.EVENT_COOLDOWN && Math.random() < eventProb){
         rollEvent(); state._lastEvent = nowS;
@@ -1142,6 +1178,26 @@ function addNews(text, kind){
 }
 function renderNews(first){
     if (first){ $('news-feed').innerHTML = ''; addNews('Welcome to PortfolioMax™. Election-year wealth-building starts now. The bank is ready to lend you a life other people can\'t rent.', 'event'); }
+}
+
+/* rotating "Sponsored" fake-ad banner */
+let _adIdx = Math.floor(Math.random() * ADS.length);
+function showAd(){
+    const el = $('ad-banner'); if (!el) return;
+    const ad = ADS[_adIdx % ADS.length]; _adIdx++;
+    el.style.opacity = '0';
+    setTimeout(()=>{
+        el.className = 'ad-banner ad-hue-' + ad.hue;
+        el.querySelector('[data-logo]').textContent = ad.logo;
+        el.querySelector('[data-brand]').textContent = ad.brand;
+        el.querySelector('[data-tagline]').textContent = ad.tagline;
+        el.querySelector('[data-fine]').textContent = ad.fine;
+        el.style.opacity = '1';
+    }, 220);
+}
+function adClick(){
+    toast('You clicked an ad. The most Kiwi thing you\'ll do all day.', 'gold');
+    blip(300);
 }
 
 /* =============================================================== JUICE */
@@ -1394,6 +1450,9 @@ function init(){
     $('mute-btn').textContent = state.muted ? '🔇' : '🔊';
     refresh();
     setInterval(tick, 100);
+    showAd();
+    setInterval(showAd, 13000);
+    const adEl = $('ad-banner'); if (adEl) adEl.addEventListener('click', adClick);
     setInterval(()=> saveGame(true), 20000);
     window.addEventListener('beforeunload', ()=> saveGame(true));
     if (!had) setTimeout(modalIntro, 400);
