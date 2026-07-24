@@ -175,37 +175,62 @@ const POLITICS = [
 const PARTIES = ['National (for the tax cuts)','Labour (hedging the CGT)','ACT (for the red-tape bonfire)','NZ First (for the vibes)','whoever wins on 7 November'];
 
 /* ------------------------------------------------------------------ SERVICES */
+/* Two kinds:
+   'hire'    — ongoing. You pay a weekly fee (flat retainer, or a commission
+               that's a % of your rent roll) for as long as it's engaged, and
+               can let them go at any time. Some charge a one-off setup fee.
+   'capital' — bought once, yours forever. No weekly drag.
+   The real question every card poses: is the overhead worth what it buys me,
+   at the size I am right now? A PR firm is dead weight when nobody's watching. */
 const SERVICES = [
-    { id:'propManager', emoji:'👔', name:'Property Manager', cost:40000,
-      desc:'They handle the tenants so you never see one. +25% rent — and they invent the fees on your behalf, with a clear conscience they bill you for.',
-      tag:'+25% rent' },
-    { id:'rentAlgo', emoji:'🤖', name:'Rent-Setting Algorithm', cost:280000, need:{phase:1},
-      desc:'The algorithm sets every rent to the maximum the data allows. Nobody decided. Nobody\'s responsible. It\'s just the number. +40% rent.',
-      tag:'+40% rent' },
-    { id:'compliance', emoji:'📋', name:'Healthy Homes "Compliance" Consultant', cost:120000,
-      desc:'Certifies your compliance with the standards — mandatory since July 2025 — that you are actively ignoring. Halves the heat from ignoring them.',
-      tag:'Ignore-standards heat ×0.5' },
-    { id:'methKit', emoji:'🧪', name:'Meth-Test Concierge', cost:90000,
-      desc:'The new meth rules (16 Apr 2026) set the "contaminated" line at 15µg. You test constantly, bill the tenant, and above 30µg you get to evict them too.',
-      tag:'+$16/household/wk' },
-    { id:'accomSupp', emoji:'🏦', name:'Accommodation Supplement Harvester', cost:320000, need:{phase:1},
-      desc:'The state spends ~$2b a year topping up the rents you set — so you set them higher. The subsidy lands in your account. Thanks, taxpayer.',
-      tag:'+$24/household/wk' },
-    { id:'tribunal', emoji:'📚', name:'Tenancy Tribunal Season Pass', cost:200000,
-      desc:'Frequent-flyer status at the Tribunal. Renters United built a free tool to fight you (TenancyHelp); you built a lawyer on retainer. Guess who wins.',
-      tag:'Eviction heat ×0.5' },
-    { id:'astroturf', emoji:'📣', name:'Astroturf "Renters\' Group"', cost:400000, need:{phase:2},
-      desc:'A "grassroots" tenant voice that mysteriously agrees with landlords. The grass is plastic, the roots are yours, the press releases are quarterly.',
-      tag:'All heat ×0.75' },
-    { id:'prFirm', emoji:'📰', name:'PR Crisis Firm on Retainer', cost:550000, need:{phase:2},
-      desc:'On call to reframe "slumlord" as "provider of essential services." The news cycle is three days long; they make sure you outlast it.',
-      tag:'Scrutiny decays fast' },
-    { id:'lobbyist', emoji:'📞', name:'Lobbyist on Speed-Dial', cost:800000, need:{phase:3},
-      desc:'Your problems become their policy. Every optimisation you perform now also earns political influence. The Planning Bill has your fingerprints, gloved.',
-      tag:'Operations grant influence' },
-    { id:'trust', emoji:'🏛️', name:'Family Trust Restructure', cost:1200000, need:{phase:3},
-      desc:'Nothing is technically yours anymore — which is why nothing is technically your fault. Brightline can\'t see you. Unlocks Restructuring.',
-      tag:'Unlocks Restructure' },
+    { id:'propManager', emoji:'👔', name:'Property Manager', kind:'hire',
+      fee:{pctRent:0.09}, signup:6000,
+      does:'An agency runs your tenancies and pushes every rent to the ceiling — so the fees are their idea, not yours.',
+      live:'Rents +25%', tag:'+25% rent · 9% commission',
+      desc:'You never see a tenant again. They invent the charges on your behalf, with a clear conscience they bill you 9% for.' },
+    { id:'rentAlgo', emoji:'🤖', name:'Rent-Setting Algorithm', kind:'hire',
+      fee:{pctRent:0.06}, signup:20000, need:{phase:1},
+      does:'Software sets every rent to the maximum the data allows. No human decides it, so no human is responsible for it.',
+      live:'Rents +40%', tag:'+40% rent · 6% subscription',
+      desc:'It\'s just the number. The number goes up. You bill it to the tenants and the licence fee to your accountant.' },
+    { id:'compliance', emoji:'📋', name:'Healthy Homes "Compliance" Consultant', kind:'hire',
+      fee:{flat:700}, signup:5000,
+      does:'Signs off the Healthy Homes standards — mandatory since July 2025 — that you are actively ignoring, so inspections bounce off.',
+      live:'Ignore-standards heat halved', tag:'Ignore-standards heat ×0.5',
+      desc:'They certify your compliance with the rules you break. The folder is thick, professional, and completely fictional.' },
+    { id:'accomSupp', emoji:'🏦', name:'Accommodation Supplement Harvester', kind:'hire',
+      fee:{pctRent:0.05}, signup:15000, need:{phase:1},
+      does:'Structures your rents to vacuum up the Accommodation Supplement — the ~$2b/yr the taxpayer pays on top of the rents you set.',
+      live:'+$24 / household / wk', tag:'+$24/household/wk · 5% cut',
+      desc:'The state tops up the rents, so you raise the rents. The subsidy lands in your account. Thanks, taxpayer.' },
+    { id:'tribunal', emoji:'📚', name:'Tenancy Tribunal Retainer', kind:'hire',
+      fee:{flat:1200}, signup:8000,
+      does:'A lawyer on retainer fights every Tenancy Tribunal case for you — and usually wins on a technicality.',
+      live:'Eviction heat halved', tag:'Eviction heat ×0.5',
+      desc:'Renters United built a free tool to fight you (TenancyHelp). You built a lawyer who bills by the comma. Guess who wins.' },
+    { id:'astroturf', emoji:'📣', name:'Astroturf "Renters\' Group"', kind:'hire',
+      fee:{flat:2200}, signup:15000, need:{phase:2},
+      does:'A "grassroots" tenant voice that mysteriously agrees with landlords, quoted in the press whenever you\'re under fire.',
+      live:'All scrutiny ×0.75', tag:'All heat ×0.75',
+      desc:'The grass is plastic, the roots are yours, and the quarterly press releases write themselves. So does the outrage.' },
+    { id:'prFirm', emoji:'📰', name:'PR Crisis Firm on Retainer', kind:'hire',
+      fee:{flat:3000}, signup:20000, need:{phase:2},
+      does:'A crisis firm on call to kill stories before they run and reframe "slumlord" as "essential service provider."',
+      live:'Scrutiny cools fast', tag:'Scrutiny decays fast',
+      desc:'The news cycle is three days long. They make sure you outlast it, every time, for a fee that never sleeps.' },
+    { id:'lobbyist', emoji:'📞', name:'Lobbyist on Speed-Dial', kind:'hire',
+      fee:{flat:4500}, signup:25000, need:{phase:3},
+      does:'Turns your problems into policy — while retained, every optimisation you run also earns political influence.',
+      live:'+3 influence per optimisation', tag:'Optimisations earn influence',
+      desc:'The Planning Bill has your fingerprints, gloved. Idle weeks still cost the retainer — you only profit if you\'re working.' },
+    { id:'methKit', emoji:'🧪', name:'Meth-Test Kit (owned)', kind:'capital', cost:90000,
+      does:'Meth-test every tenancy, bill the tenant for it, and evict on a reading above 30µg. Yours to keep.',
+      live:'+$16 / household / wk', tag:'+$16/household/wk',
+      desc:'The new rules (16 Apr 2026) set the "contaminated" line at 15µg. You test constantly, because the test itself is billable.' },
+    { id:'trust', emoji:'🏛️', name:'Family Trust Restructure', kind:'capital', cost:1200000, need:{phase:3},
+      does:'Move everything into a family trust. Nothing is technically yours, so nothing is technically your fault.',
+      live:'Restructure unlocked', tag:'Unlocks Restructure',
+      desc:'A one-off legal restructure, done once and permanent. Brightline can\'t see you. Neither, increasingly, can you.' },
 ];
 
 /* -------------------------------------------------------------------- PHASES */
@@ -237,9 +262,26 @@ const HEAT_TIERS = [
 ];
 
 /* ------------------------------------------------------------- TENANT PIECES */
-// A real NZ cross-section — European plurality, plus Māori, Pasifika, Asian & Indian names, mixed freely.
-const T_FIRST = ['James','Emma','Jack','Olivia','Liam','Sophie','Ben','Grace','Sam','Ella','Josh','Kate','Ryan','Chloe','Dan','Hannah','Matt','Lucy','Tom','Amy','Connor','Georgia','Zoe','Nathan','Holly','Aaron','Bridget','Scott','Paige','Cam','Megan','Luke','Aroha','Wiremu','Manaia','Hine','Nikau','Rangi','Sione','Sina','Mele','Fetu','Priya','Raj','Mei','Anika'];
-const T_LAST  = ['Smith','Wilson','Taylor','Brown','Walker','Thompson','Wright','Baker','Harris','Clark','Robinson','Scott','Murphy','O\'Brien','Reid','Marsh','Cooper','Bennett','Hughes','Fraser','Ellis','Gray','Doyle','Nolan','Stewart','Webb','Ngata','Williams','Hohepa','Rewiti','Waititi','Faleolo','Tuilagi','Solomona','Patel','Singh','Kaur','Chen','Nguyen'];
+// Names are generated with a controlled NZ distribution — clearly Pākehā/European
+// majority (~72%), with a coherent minority of Māori, Pasifika, Asian & Indian
+// names (kept culturally consistent rather than randomly mashed together).
+const EURO_FIRST = ['James','Emma','Jack','Olivia','Liam','Sophie','Ben','Grace','Sam','Ella','Josh','Kate','Ryan','Chloe','Dan','Hannah','Matt','Lucy','Tom','Amy','Connor','Georgia','Zoe','Nathan','Holly','Aaron','Bridget','Scott','Paige','Megan','Luke','Sarah','Mark','Rebecca','Craig','Jess','Pete','Kylie','Shane','Nicola','Wayne','Donna','Bruce','Sharon','Kevin','Ruth','Gary','Steph'];
+const EURO_LAST  = ['Smith','Wilson','Taylor','Brown','Walker','Thompson','Wright','Baker','Harris','Clark','Robinson','Scott','Murphy','O\'Brien','Reid','Marsh','Cooper','Bennett','Hughes','Fraser','Ellis','Gray','Doyle','Nolan','Stewart','Webb','Hill','Ward','Watson','Kelly','Moore','Bell','Cox','Fisher','Palmer','Dixon','Barnes','Hayes','Newton','Coleman','Pratt','Sinclair'];
+const MAORI_FIRST = ['Aroha','Wiremu','Manaia','Hine','Nikau','Rangi','Tama','Anahera','Moana','Kauri'];
+const MAORI_LAST  = ['Ngata','Hohepa','Rewiti','Waititi','Katene','Wetere','Paki','Williams'];
+const PASI_FIRST  = ['Sione','Sina','Mele','Fetu','Ana','Talei','Losa'];
+const PASI_LAST   = ['Faleolo','Tuilagi','Solomona','Fifita','Vaka','Latu'];
+const ASIAN_FIRST = ['Priya','Raj','Mei','Anika','Jun','Wei','Aarav','Sanjay'];
+const ASIAN_LAST  = ['Patel','Singh','Kaur','Chen','Nguyen','Kim','Wang','Reddy'];
+
+function makeName(){
+    const r = Math.random();
+    if (r < 0.72) return pick(EURO_FIRST) + ' ' + pick(EURO_LAST);
+    if (r < 0.80) return pick(MAORI_FIRST) + ' ' + pick(Math.random()<0.5 ? MAORI_LAST : EURO_LAST);
+    if (r < 0.87) return pick(PASI_FIRST) + ' ' + pick(PASI_LAST);
+    if (r < 0.95) return pick(ASIAN_FIRST) + ' ' + pick(ASIAN_LAST);
+    return pick(EURO_FIRST) + ' ' + pick(MAORI_LAST.concat(PASI_LAST));   // a few genuinely mixed
+}
 const T_JOB = [
     'ED nurse, night shifts','Primary school teacher','Supermarket 2IC','Barista + Uber, both',
     'Aged-care worker','Apprentice sparky','Bus driver','Solo mum, two kids','Three uni students (a "flat")',
@@ -470,8 +512,28 @@ function operatingWeekly(){
     return op;
 }
 function interestWeekly(){ return state.debt * state.rate / 52; }
+
+/* ongoing weekly cost of every 'hire' service you currently have engaged */
+function serviceFee(sv){
+    if (!sv || !sv.fee) return 0;
+    if (sv.fee.flat)    return sv.fee.flat;
+    if (sv.fee.pctRent) return grossRentWeekly() * sv.fee.pctRent;
+    return 0;
+}
+function servicesWeekly(){
+    let f = 0;
+    SERVICES.forEach(sv=>{ if (sv.kind === 'hire' && state.upgrades[sv.id]) f += serviceFee(sv); });
+    return f;
+}
+function feeLabel(sv){
+    if (sv.kind === 'capital') return 'One-off · ' + money(sv.cost);
+    if (sv.fee && sv.fee.flat)    return money(sv.fee.flat) + '/wk';
+    if (sv.fee && sv.fee.pctRent) return Math.round(sv.fee.pctRent*100) + '% of rent · ' + money(serviceFee(sv)) + '/wk';
+    return '';
+}
+
 /* actual money-in-the-bank change per week (can be negative — negative gearing) */
-function netCashflow(){ return operatingWeekly() - interestWeekly(); }
+function netCashflow(){ return operatingWeekly() - interestWeekly() - servicesWeekly(); }
 
 function assessableIncome(){ return CFG.BASE_INCOME + CFG.RENT_SHADE * grossRentWeekly() * 52; }
 function maxDebtDTI(){ return CFG.DTI * assessableIncome(); }
@@ -697,33 +759,61 @@ function buildServices(){
     list.innerHTML = '';
     SERVICES.forEach(sv=>{
         const card = document.createElement('div');
-        card.className = 'buy-card';
+        card.className = 'buy-card svc-card';
+        const kindTag = sv.kind === 'capital' ? 'Buy once' : 'Weekly hire';
         card.innerHTML = `
             <div class="buy-card-head">
                 <span class="buy-title"><span class="buy-emoji">${sv.emoji}</span> ${sv.name}</span>
+                <span class="svc-cost" data-cost></span>
             </div>
-            <div class="buy-desc">${sv.desc}</div>
-            <div class="buy-stats"><span class="tag money">${sv.tag}</span></div>
+            <div class="svc-lines">
+                <div class="svc-line"><span class="svc-k">Does</span><span class="svc-v">${sv.does}</span></div>
+                <div class="svc-line"><span class="svc-k">Now</span><span class="svc-v" data-now>—</span></div>
+            </div>
+            <div class="buy-desc small">${sv.desc}</div>
             <div class="lock-note" data-lock hidden></div>
-            <button class="buy-btn" data-buy>Purchase</button>`;
+            <div class="svc-foot">
+                <span class="svc-kind">${kindTag}</span>
+                <button class="buy-btn" data-buy>…</button>
+            </div>`;
         list.appendChild(card);
-        const btn = card.querySelector('[data-buy]');
+        const btn  = card.querySelector('[data-buy]');
+        const cost = card.querySelector('[data-cost]');
+        const nowEl = card.querySelector('[data-now]');
+        const lock = card.querySelector('[data-lock]');
         btn.addEventListener('click', (e)=> buyService(sv, e));
         updaters.push(()=>{
             const owned = !!state.upgrades[sv.id];
-            card.classList.toggle('owned-service', owned);
-            const lock = card.querySelector('[data-lock]');
             const gate = meetsNeed(sv.need);
+            card.classList.toggle('owned-service', owned);
+            cost.textContent = feeLabel(sv);
+
+            // "Now" line: the live effect when engaged, otherwise what it would do
             if (owned){
-                card.classList.remove('locked'); lock.hidden = true;
-                btn.className = 'buy-btn owned'; btn.disabled = true; btn.textContent = '✓ Retained';
-            } else if (!gate.ok){
-                card.classList.add('locked'); lock.hidden = false; lock.textContent = '🔒 ' + gate.why;
-                btn.disabled = true; btn.textContent = 'Locked';
+                nowEl.textContent = sv.kind === 'hire'
+                    ? `✓ ${sv.live} · costing ${money(serviceFee(sv))}/wk`
+                    : `✓ ${sv.live}`;
+                nowEl.classList.add('on');
             } else {
-                card.classList.remove('locked'); lock.hidden = true;
-                btn.className = 'buy-btn'; btn.disabled = state.money < sv.cost;
-                btn.textContent = `Purchase — ${money(sv.cost)}`;
+                nowEl.textContent = sv.tag;
+                nowEl.classList.remove('on');
+            }
+
+            if (!gate.ok && !owned){
+                card.classList.add('locked'); lock.hidden = false; lock.textContent = '🔒 ' + gate.why;
+                btn.className = 'buy-btn'; btn.disabled = true; btn.textContent = 'Locked';
+                return;
+            }
+            card.classList.remove('locked'); lock.hidden = true;
+
+            if (sv.kind === 'capital'){
+                if (owned){ btn.className = 'buy-btn owned'; btn.disabled = true; btn.textContent = '✓ Owned'; }
+                else { btn.className = 'buy-btn'; btn.disabled = state.money < sv.cost; btn.textContent = `Buy — ${money(sv.cost)}`; }
+            } else if (owned){
+                btn.className = 'buy-btn cancel'; btn.disabled = false; btn.textContent = 'Let go';
+            } else {
+                btn.className = 'buy-btn'; btn.disabled = state.money < (sv.signup||0);
+                btn.textContent = sv.signup ? `Engage · ${money(sv.signup)} setup` : 'Engage';
             }
         });
     });
@@ -768,12 +858,12 @@ function meetsNeed(need){
 
 /* ---- Tenants ---- */
 function makeTenant(){
-    const first = pick(T_FIRST), last = pick(T_LAST);
+    const name = makeName();
     const rent = 420 + Math.floor(Math.random()*10)*35;
     const used = (state.featured||[]).map(t=>t && t.situation);
     let sit, tries = 0;
     do { sit = pick(T_SITUATION); tries++; } while (used.indexOf(sit) !== -1 && tries < 12);
-    return { name:`${first} ${last}`, job:pick(T_JOB), rent, strain: 16 + Math.floor(Math.random()*24), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳','👴']) };
+    return { name, job:pick(T_JOB), rent, strain: 16 + Math.floor(Math.random()*24), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳','👴']) };
 }
 function syncTenants(){
     state.tenants = baseTenants();
@@ -994,15 +1084,40 @@ function squeezeTenant(idx, e){
 }
 
 function buyService(sv, e){
-    if (state.upgrades[sv.id] || state.money < sv.cost) return;
+    const owned = !!state.upgrades[sv.id];
+
+    // capital: one-off permanent purchase
+    if (sv.kind === 'capital'){
+        if (owned || !meetsNeed(sv.need).ok || state.money < sv.cost) return;
+        state.money -= sv.cost;
+        state.upgrades[sv.id] = true;
+        fx('−'+money(sv.cost), 'neg', e);
+        blip(300);
+        toast(`Bought: ${sv.name}. Yours, permanently.`, 'good');
+        addNews(`Bought "${sv.name}." An offshore accountant somewhere feels a warm glow.`, 'event');
+        if (sv.id === 'trust') updatePrestigeButton();
+        refresh();
+        return;
+    }
+
+    // hire: cancel if engaged
+    if (owned){
+        state.upgrades[sv.id] = false;
+        blip(180);
+        toast(`Let go: ${sv.name}. The ${money(serviceFee(sv))}/wk stops — and so does the favour.`, 'event');
+        refresh();
+        return;
+    }
+
+    // hire: engage (pay one-off setup, then the weekly fee begins)
     if (!meetsNeed(sv.need).ok) return;
-    state.money -= sv.cost;
+    const signup = sv.signup || 0;
+    if (state.money < signup) return;
+    if (signup){ state.money -= signup; fx('−'+money(signup), 'neg', e); }
     state.upgrades[sv.id] = true;
-    fx('−'+money(sv.cost), 'neg', e);
     blip(300);
-    toast(`Retained: ${sv.name}. Working for you, against everyone else, forever.`, 'good');
+    toast(`Engaged: ${sv.name}. ${money(serviceFee(sv))}/wk from here on — cancel any time.`, 'good');
     addNews(`Engaged "${sv.name}." An offshore accountant somewhere feels a warm glow.`, 'event');
-    if (sv.id === 'trust') updatePrestigeButton();
     refresh();
 }
 

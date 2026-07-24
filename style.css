@@ -270,6 +270,30 @@ body {
 .buy-btn.owned { background: var(--green); cursor: default; }
 .lock-note { font-size: .76em; color: var(--gold-dark); font-weight: 700; }
 
+/* ---------- Service cards (weekly hires / one-off buys) ---------- */
+.svc-cost {
+    font-size: .74em; font-weight: 800; white-space: nowrap; color: var(--teal-dark);
+    background: #e9f6f7; border: 1px solid #cfeaec; padding: 3px 8px; border-radius: 7px; margin-top: 1px;
+}
+.svc-lines { display: flex; flex-direction: column; gap: 4px; }
+.svc-line { display: flex; gap: 8px; font-size: .82em; line-height: 1.35; }
+.svc-k {
+    flex: 0 0 34px; font-size: .82em; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    color: #93a3a8; padding-top: 1px;
+}
+.svc-v { color: var(--ink); }
+.svc-v.on { color: #1c7a4a; font-weight: 700; }
+.owned-service .svc-cost { color: #1c7a4a; background: #e4f6ec; border-color: #bfe6cd; }
+.buy-desc.small { font-size: .76em; opacity: .9; }
+.svc-foot { margin-top: auto; display: flex; align-items: center; gap: 10px; }
+.svc-kind {
+    flex: 0 0 auto; font-size: .68em; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    color: #7d8c92; background: #eef2f3; padding: 4px 8px; border-radius: 6px;
+}
+.svc-foot .buy-btn { margin-top: 0; }
+.buy-btn.cancel { background: #fff; color: #a82f2f; border: 1px solid #f0c9c9; }
+.buy-btn.cancel:hover:not(:disabled) { background: #fdeaea; color: #8f2626; box-shadow: none; transform: none; }
+
 /* ---------- Action list (operations / politics) ---------- */
 .action-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .action-btn {
