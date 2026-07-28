@@ -899,7 +899,7 @@ function makeTenant(){
     const used = (state.featured||[]).map(t=>t && t.situation);
     let sit, tries = 0;
     do { sit = pick(T_SITUATION); tries++; } while (used.indexOf(sit) !== -1 && tries < 12);
-    return { name, job:pick(T_JOB), rent, strain: 16 + Math.floor(Math.random()*24), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳','👴']) };
+    return { name, job:pick(T_JOB), rent, strain: 12 + Math.floor(Math.random()*16), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳','👴']) };
 }
 function syncTenants(){
     state.tenants = baseTenants();
@@ -1117,11 +1117,11 @@ function squeezeTenant(idx, e){
     const card = $('tenant-cards').children[idx];
     const bump = 20 + Math.floor(Math.random()*25);
     t.rent += bump;
-    t.strain = clamp(t.strain + 24 + Math.floor(Math.random()*8), 0, 100);
-    state.money += bump * 6;               // the back-rent you just extracted
+    t.strain = clamp(t.strain + 15 + Math.floor(Math.random()*6), 0, 100);  // ~4–5 squeezes of runway
+    state.money += bump * 10;              // the back-rent you just extracted — satisfying, discrete
     state.rentMultBonus += 0.003;          // squeezing individuals nudges your whole rent roll up
     state.rentRaises++;
-    fx('+'+money(bump*6), 'pos', e);
+    fx('+'+money(bump*10), 'pos', e);
     flashCash(false);
     addHeat(4 * multipliers().heatGen, e);
     blip(220);
@@ -2048,7 +2048,7 @@ function coachStep(){
     if (props === 0)
         return { text:"Buy your first rental below — it's your income, and the borrowing power to buy the next one. 👇", tab:'portfolio' };
     if (s.rentRaises === 0)
-        return { text:"You own it, they pay for it. Hit “Raise the rent 💢” on your tenant's card for instant cash.", scroll:'#tenants-strip' };
+        return { text:"Squeeze your tenant: hit “Raise the rent 💢” for a cash hit. Watch the strain bar — ease off before it redlines, or they walk.", scroll:'#tenants-strip' };
     if (props === 1)
         return { text:"One's a hobby, two's a portfolio. Buy another rental — owning more unlocks bigger, better properties.", tab:'portfolio' };
     if (s.feesInvented === 0 && s.money < 60000)
