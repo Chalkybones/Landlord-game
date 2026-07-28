@@ -455,6 +455,7 @@ function defaultState() {
         achievements: {},          // id -> true (Rap Sheet)
         dossier: 0,                // the reporter's investigation, 0–100
         _dossierChapter: 0,        // which escalation beat she's reached
+        unlocked: { portfolio: true },  // progressive disclosure of tabs/systems
     };
 }
 
@@ -635,6 +636,8 @@ function loadGame(){
         state.achievements = state.achievements || {};
         if (typeof state.dossier !== 'number') state.dossier = 0;
         if (typeof state._dossierChapter !== 'number') state._dossierChapter = 0;
+        state.unlocked = state.unlocked || { portfolio: true };
+        state.unlocked.portfolio = true;
         if (!state.marketIndex) state.marketIndex = 1;
         PROPERTIES.forEach(p => {
             const st = state.properties[p.id] || (state.properties[p.id] = { count:0, cost:p.price, deBasis:0 });
@@ -1199,6 +1202,7 @@ function doPolitics(pa, e){
 function addHeat(delta, e){
     if (!delta) return;
     state.heat = clamp(state.heat + delta, 0, CFG.HEAT_MAX);
+    if (state.heat >= 25) state._everHot = true;         // unlocks Politics for good
     if (delta > 0) dossierNudge(delta * 0.22);          // every bit of scrutiny feeds her file
     if (e && delta > 0) fx('+'+Math.round(delta)+' heat', 'heat', e, 34);
     if (e && delta < 0) fx(Math.round(delta)+' heat', 'infl', e, 34);
@@ -1911,6 +1915,82 @@ function setBuyQty(q){
 }
 function toggleMute(){ state.muted = !state.muted; $('mute-btn').textContent = state.muted ? '🔇' : '🔊'; }
 
+/* =============================================================== COACH / GUIDANCE */
+function selectTab(name){
+    const tabBtn = document.querySelector(`.tab[data-tab="${name}"]`);
+    if (!tabBtn || tabBtn.hidden) return;
+    document.querySelectorAll('.tab').forEach(t=> t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=> p.classList.remove('active'));
+    tabBtn.classList.add('active');
+    const panel = document.querySelector(`.tab-panel[data-panel="${name}"]`);
+    if (panel) panel.classList.add('active');
+    if (name === 'news'){ state._unread = 0; const b = tabBtn.querySelector('.badge'); if (b) b.remove(); }
+    scrollToEl('.tab-body');
+}
+function scrollToEl(sel){
+    const el = document.querySelector(sel); if (!el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY - 10;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+}
+
+/* progressive disclosure — reveal tabs/systems only as they become relevant */
+function updateUnlocks(){
+    const u = state.unlocked, props = propertyCount();
+    const reveal = (key, cond, label) => {
+        const tab = document.querySelector(`.tab[data-tab="${key}"]`);
+        if (!u[key] && cond){
+            u[key] = true;
+            if (tab){ tab.classList.add('just-unlocked'); setTimeout(()=>{ if (tab) tab.classList.remove('just-unlocked'); }, 1900); }
+            if (label) toast(`🔓 Unlocked: ${label}`, 'gold');
+        }
+        if (tab) tab.hidden = !u[key];
+    };
+    reveal('operations', props>=1, 'Squeeze — raise rents & invent fees');
+    reveal('news',       props>=1, 'News feed');
+    reveal('services',   props>=3, 'Services — hire the professionals');
+    reveal('politics',   state._everHot || state.influence>0 || props>=4, 'Politics — buy your way out of scrutiny');
+    const ts = $('tenants-strip'); if (ts) ts.hidden = props < 1;
+}
+
+/* the single most useful next action, given the whole game state */
+function coachStep(){
+    const s = state, props = propertyCount(), tier = heatTier().i, ph = phaseInfo().i;
+    if (tier >= 3 && s.influence < 60)
+        return { text:"🔥 The press is circling. Go to Politics and spend Influence to spike the story — before the exposé drops.", tab:'politics' };
+    if (props === 0)
+        return { text:"Buy your first rental below — it's your income, and the borrowing power to buy the next one. 👇", tab:'portfolio' };
+    if (s.rentRaises === 0)
+        return { text:"You own it, they pay for it. Hit “Raise the rent 💢” on your tenant's card for instant cash.", scroll:'#tenants-strip' };
+    if (props === 1)
+        return { text:"One's a hobby, two's a portfolio. Buy another rental — owning more unlocks bigger, better properties.", tab:'portfolio' };
+    if (s.feesInvented === 0 && s.money < 60000)
+        return { text:"Cash a bit tight? In Squeeze, “Invent a Fee.” It's not a letting fee — it's an “administration contribution.”", tab:'operations' };
+    if (tier >= 2 && s.influence < 40)
+        return { text:"People are noticing. Duck into Politics and turn some cash into Influence before it gets loud.", tab:'politics' };
+    if (s.money > 75000 && canAffordAnyProperty())
+        return { text:"You've got cash sitting there doing nothing evil. Buy another rental and put it to work.", tab:'portfolio' };
+    if (props >= 3 && !anyHireEngaged() && grossRentWeekly() > 3000)
+        return { text:"Your rent roll's big enough that a Property Manager would pay for itself. Have a look in Services.", tab:'services' };
+    if (ph >= 4 && s.influence < 520)
+        return { text:"You're one move from the top. Bank Influence in Politics — the Kāinga Ora board seat is the win.", tab:'politics' };
+    if (ph >= 4)
+        return { text:"Take the Kāinga Ora board seat in Politics. Become the Minister. Poacher, meet gamekeeper.", tab:'politics' };
+    return { text:"Keep buying, keep squeezing, keep your scrutiny down. Every rung is closer to Minister.", tab:'portfolio' };
+}
+function canAffordAnyProperty(){ return PROPERTIES.some(p => propertyCount() >= p.unlock && plannedBuy(p).n >= 1); }
+function anyHireEngaged(){ return SERVICES.some(sv => sv.kind === 'hire' && state.upgrades[sv.id]); }
+let _coachStep = null;
+function updateCoach(){
+    const step = coachStep();
+    const el = $('coach-step'); if (!el) return;
+    if (!_coachStep || _coachStep.text !== step.text){
+        el.textContent = step.text;
+        el.classList.remove('coach-pop'); void el.offsetWidth; el.classList.add('coach-pop');
+    }
+    _coachStep = step;
+    const cta = $('coach-cta'); if (cta) cta.hidden = !(step.tab || step.scroll);
+}
+
 /* =============================================================== REFRESH */
 function refresh(){
     $('money').textContent = money(state.money);
@@ -1984,6 +2064,8 @@ function refresh(){
     updateTenantStrain();
     updatePrestigeButton();
     checkAchievements();
+    updateUnlocks();
+    updateCoach();
 }
 
 /* =============================================================== LOOP */
@@ -2007,19 +2089,12 @@ function tick(){
 
 /* =============================================================== INIT */
 function setupEvents(){
-    document.querySelectorAll('.tab').forEach(tab=>{
-        tab.addEventListener('click', ()=>{
-            document.querySelectorAll('.tab').forEach(t=> t.classList.remove('active'));
-            document.querySelectorAll('.tab-panel').forEach(p=> p.classList.remove('active'));
-            tab.classList.add('active');
-            document.querySelector(`.tab-panel[data-panel="${tab.dataset.tab}"]`).classList.add('active');
-            if (tab.dataset.tab === 'news'){ state._unread = 0; const b = tab.querySelector('.badge'); if (b) b.remove(); }
-            // on phones, jump to the freshly-selected content (bottom-bar nav)
-            if (window.innerWidth <= 700){
-                const body = document.querySelector('.tab-body');
-                if (body){ const y = body.getBoundingClientRect().top + window.scrollY - 6; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); }
-            }
-        });
+    document.querySelectorAll('.tab').forEach(tab=> tab.addEventListener('click', ()=> selectTab(tab.dataset.tab)));
+    const cta = $('coach-cta');
+    if (cta) cta.addEventListener('click', ()=>{
+        if (!_coachStep) return;
+        if (_coachStep.tab) selectTab(_coachStep.tab);
+        else if (_coachStep.scroll) scrollToEl(_coachStep.scroll);
     });
     document.querySelectorAll('.speed-btn').forEach(b=> b.addEventListener('click', ()=> setSpeed(parseInt(b.dataset.speed))));
     document.querySelectorAll('.qty-btn').forEach(b=> b.addEventListener('click', ()=> setBuyQty(b.dataset.qty === 'max' ? 'max' : parseInt(b.dataset.qty))));
