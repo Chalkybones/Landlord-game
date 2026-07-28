@@ -1669,7 +1669,7 @@ function showEndingModal(kind){
     };
     const e = E[kind] || E.empire;
     showModal(`<div class="modal-kicker">${e.kicker}</div><h1>${e.title}</h1>${e.body}${stats}`, [
-        { label:'Share result 📣', cls:'gold', fn:()=>{ shareStats(); } },
+        { label:'📸 Share result', cls:'gold', fn:()=>{ shareCard(); } },
         { label:'Play again', cls:'primary', fn:()=>{ hardReset(); } },
     ], true);
 }
@@ -1886,6 +1886,94 @@ Play: https://chalkybones.github.io/Landlord-game/`;
     } else alert(txt);
 }
 
+/* ---- Shareable result IMAGE (the viral bit) — rendered client-side to a canvas ---- */
+function endingLabel(){
+    const E = { minister:'Minister of Housing 🏛️', empire:'The Empire 🥂', expose:'Exposed 💥', collapse:'Margin Called 📉', reform:'The Reformed Landlord 🕊️' };
+    return state.ended ? (E[state.endingKind] || phaseInfo().name) : phaseInfo().name;
+}
+function handsVerdict(){
+    if (state.fhbSales >= 3 && state.evictions === 0) return { label:'THE REFORMED LANDLORD', emoji:'🕊️' };
+    const dirt = state.evictions*3 + state.violations*2 + state.feesInvented + state.bribes*2;
+    if (dirt <= 2)  return { label:'SUSPICIOUSLY CLEAN', emoji:'😇' };
+    if (dirt <= 10) return { label:'A BIT GRUBBY', emoji:'😬' };
+    if (dirt <= 25) return { label:'PROPERLY FILTHY', emoji:'😈' };
+    if (dirt <= 55) return { label:'UTTERLY COMPROMISED', emoji:'🦹' };
+    return { label:'SLUMLORD SUPREME', emoji:'👑' };
+}
+function _rr(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+function _wrapC(g,text,cx,y,maxW,lineH){
+    const words=String(text).split(' '); let line='', lines=[];
+    for (const w of words){ const t = line? line+' '+w : w; if (g.measureText(t).width > maxW && line){ lines.push(line); line=w; } else line=t; }
+    if (line) lines.push(line);
+    lines.forEach((ln,i)=> g.fillText(ln, cx, y + i*lineH));
+    return lines.length;
+}
+function renderShareCard(){
+    const c = document.createElement('canvas'); c.width = 1080; c.height = 1080;
+    const g = c.getContext('2d');
+    const F = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    let bg = g.createLinearGradient(0,0,900,1080);
+    bg.addColorStop(0,'#063b3e'); bg.addColorStop(.55,'#044f54'); bg.addColorStop(1,'#02696e');
+    g.fillStyle=bg; g.fillRect(0,0,1080,1080);
+    let r1 = g.createRadialGradient(1000,90,40,1000,90,720); r1.addColorStop(0,'rgba(23,162,162,.38)'); r1.addColorStop(1,'rgba(23,162,162,0)'); g.fillStyle=r1; g.fillRect(0,0,1080,1080);
+    let r2 = g.createRadialGradient(70,1050,40,70,1050,680); r2.addColorStop(0,'rgba(224,165,0,.30)'); r2.addColorStop(1,'rgba(224,165,0,0)'); g.fillStyle=r2; g.fillRect(0,0,1080,1080);
+
+    g.textBaseline='alphabetic';
+    g.textAlign='left'; g.fillStyle='#fff'; g.font=`800 46px ${F}`; g.fillText('🏠 PortfolioMax™', 70, 104);
+    g.fillStyle='rgba(255,255,255,.55)'; g.font=`700 23px ${F}`; g.fillText('KIWI LANDLORD EMPIRE · A SATIRE OF NZ HOUSING', 70, 142);
+
+    g.textAlign='center';
+    g.fillStyle='#f2c94c'; g.font=`800 30px ${F}`; g.fillText(state.ended ? 'FINAL STANDING' : 'I GOT TO', 540, 252);
+    g.fillStyle='#fff'; g.font=`800 74px ${F}`; _wrapC(g, endingLabel(), 540, 336, 950, 80);
+
+    g.fillStyle='rgba(255,255,255,.55)'; g.font=`800 25px ${F}`; g.fillText('EMPIRE VALUE', 540, 472);
+    g.fillStyle='#8ff0bd'; g.font=`800 104px ${F}`; g.fillText(money(netWorth()), 540, 566);
+
+    const stats = [
+        ['Properties', String(propertyCount())],
+        ['Households', fmt(state.tenants)],
+        ['Evictions', String(state.evictions)],
+        ['Standards ignored', String(state.violations)],
+        ['Fees invented', String(state.feesInvented)],
+        ['🏅 Rap sheet', achCount()+'/'+ACHIEVEMENTS.length],
+    ];
+    const gx=70, gy=616, gap=22, gw=(940-2*gap)/3, gh=104;
+    stats.forEach((s,i)=>{
+        const x = gx + (i%3)*(gw+gap), y = gy + ((i/3)|0)*(gh+gap);
+        g.fillStyle='rgba(255,255,255,.08)'; _rr(g,x,y,gw,gh,16); g.fill();
+        g.strokeStyle='rgba(255,255,255,.15)'; g.lineWidth=1.5; _rr(g,x,y,gw,gh,16); g.stroke();
+        g.textAlign='center';
+        g.fillStyle='#fff'; g.font=`800 44px ${F}`; g.fillText(s[1], x+gw/2, y+56);
+        g.fillStyle='rgba(255,255,255,.6)'; g.font=`700 19px ${F}`; g.fillText(s[0].toUpperCase(), x+gw/2, y+86);
+    });
+
+    const v = handsVerdict();
+    g.textAlign='center';
+    g.fillStyle='rgba(255,255,255,.6)'; g.font=`800 27px ${F}`; g.fillText('HOW DIRTY ARE YOUR HANDS?', 540, 928);
+    g.fillStyle='#ffd77a'; g.font=`800 56px ${F}`; g.fillText(v.emoji+'  '+v.label, 540, 992);
+    g.fillStyle='rgba(255,255,255,.72)'; g.font=`700 26px ${F}`; g.fillText('Play free · chalkybones.github.io/Landlord-game', 540, 1048);
+    return c;
+}
+function shareCard(){
+    let canvas;
+    try { canvas = renderShareCard(); } catch(e){ shareStats(); return; }
+    const caption = "How dirty are your hands? 🏠 Kiwi Landlord Empire — a satire of NZ's housing crisis. Play free: https://chalkybones.github.io/Landlord-game/";
+    canvas.toBlob(async (blob)=>{
+        if (!blob){ shareStats(); return; }
+        const file = new File([blob], 'kiwi-landlord-empire.png', { type:'image/png' });
+        if (navigator.canShare && navigator.canShare({ files:[file] })){
+            try { await navigator.share({ files:[file], text:caption }); return; }
+            catch(e){ if (e && e.name === 'AbortError') return; }  // user cancelled
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href=url; a.download='kiwi-landlord-empire.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=> URL.revokeObjectURL(url), 4000);
+        if (navigator.clipboard) navigator.clipboard.writeText(caption).catch(()=>{});
+        toast('Card saved 📸 — post it to r/newzealand.', 'good');
+    }, 'image/png');
+}
+
 /* =============================================================== RESET */
 function resetGame(){
     showModal(`
@@ -2100,7 +2188,7 @@ function setupEvents(){
     document.querySelectorAll('.qty-btn').forEach(b=> b.addEventListener('click', ()=> setBuyQty(b.dataset.qty === 'max' ? 'max' : parseInt(b.dataset.qty))));
     $('save-game').addEventListener('click', ()=> saveGame(false));
     const rap = $('rapsheet-btn'); if (rap) rap.addEventListener('click', modalRapSheet);
-    $('share-stats').addEventListener('click', shareStats);
+    $('share-stats').addEventListener('click', shareCard);
     $('reset-game').addEventListener('click', resetGame);
     $('prestige-btn').addEventListener('click', doPrestige);
     $('mute-btn').addEventListener('click', toggleMute);
