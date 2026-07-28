@@ -14,16 +14,18 @@ tags get spoken literally — if you must use v2, strip the brackets.
 
 Four voices are essential; the other two can be doubled up to save sourcing.
 
-| Key | Character | Voice Library filter | Stability / Style | Direction |
-|-----|-----------|----------------------|-------------------|-----------|
-| **HOST** | "Macka", the host | Accent **NZ** · Male · 45–60 · *gravelly, warm, conversational* | Stab **55** / Style **35** | Dry, smug, seen-it-all. Never rattled. Talkback chumminess with a blade under it. |
-| **BAZ** | furious renter | **NZ** · Male · 25–40 · *rough, energetic* | Stab **30** / Style **70** | Wound-up, righteous, cracks into shouting. He *means* it — that's why it's funny. |
-| **GEOFF** | smug investor | **NZ** · Male · 50–65 · *smooth, plummy* | Stab **60** / Style **40** | Oily, self-satisfied, condescending calm. Believes every word. |
-| **VAL** | the nan | **NZ** · Female · 60–75 · *warm, gentle* | Stab **65** / Style **25** | Kind, unhurried, quietly devastating. Not angry — sad, and correct. |
-| NEWS | newsreader | **NZ** · any · 30–50 · *crisp, neutral* | Stab **70** / Style **20** | Deadpan RNZ read, played dead straight. *Can reuse HOST at higher stability.* |
-| ADV | sponsor VO | **NZ/AU** · bright · *announcer* | Stab **40** / Style **65** | Chirpy ad gloss over grim content. *Can reuse NEWS at higher style.* |
+Cast is locked — voices chosen from the ElevenLabs Voice Library:
 
-**Minimum = 4 real voices** (HOST, BAZ, GEOFF, VAL). Ideal = 6.
+| Key | Character | ElevenLabs Voice ID | Stab / Style | Direction |
+|-----|-----------|---------------------|--------------|-----------|
+| **HOST** | Macka, the host | `53CG2aO2HU48thT3QnMl` | 55 / 35 | Dry, smug, seen-it-all. Never rattled. Talkback chumminess with a blade under it. |
+| **BAZ** | furious renter | `TeKvcwcnCefHCOr0Q7dM` | 30 / 70 | Wound-up, righteous, cracks into shouting. He *means* it — that's why it's funny. |
+| **HEMI** | hard-case renter (the crack-up) | `BHhU6fTKdSX6bN7T1tpz` | 45 / 55 | Laid-back, deadpan-funny, warm. The **sharpest** guy on the show — lands the truest line with a grin. Funny *because he's right*, never the butt of the joke. |
+| **GEOFF** | smug investor | `82kwqgRqvxoiNwemeENJ` | 60 / 40 | Oily, self-satisfied, condescending calm. Believes every word. |
+| **SANDRA** | warm mum / newsreader | `sxEoZ67pB0EMoWOZZ37G` | caller **55 / 35** · news **72 / 18** | Warm and weary as a caller; flat and deadpan as the newsreader. Does double duty. |
+| **VAL** | the nan | `pcKdPWtbF6bM9o7NHjCI` | 65 / 25 | Kind, unhurried, quietly devastating. Not angry — sad, and correct. |
+
+**Which voice reads what:** callers use their own names above · `news_*` → **SANDRA** (news settings) · `ad_*` → **SANDRA or HOST** at bright/fast (Stab 40 / Style 65).
 
 **Pronunciation notes** (add as an alias if a voice fumbles them):
 Kāinga Ora ≈ "KY-nga OR-ah" · Papakura ≈ "papa-KOO-ra" · Aotearoa ≈ "ah-oh-tay-ah-ROH-ah" · Remuera ≈ "rem-YOU-era" · OCR = say "the O-C-R".
@@ -84,6 +86,15 @@ Each line: `clip_id` · **[when it plays]** · the tagged text to paste.
 - `geoff_filler_1` · [smug] I tell the young ones: just buy a house. It's not hard. I did it four times. [chuckles] With their rent, but still.
 - `val_filler_1` · [gentle] I rang to say the talkback's got awfully shouty lately. [pause] Mind you. So has the rent.
 
+**→ Hemi, the hard-case (the crack-up — wry, warm, and the realest take on the show)**
+- `hemi_intro_1` · **[general/filler]** [laid-back, amused] Yeah kia ora Macka. Long-time renter, first-time home-owner — [chuckles] nah I'm having you on, I'll never own a home. Just ringing for the company.
+- `hemi_rent_1` · **[rent hike]** [dry, amused] Rent went up again, eh. I've stopped being angry, I just *admire* it now. [chuckles] It's like a magic trick. Where'd me whole pay go? Gone. Ta-da.
+- `hemi_evict_1` · **[eviction]** [wry] Me cousin got the ninety-day. Landlord "needed it for family." [beat] Family moved in Tuesday — off Trade Me, four-fifty a week. [chuckles] Must be distant rellies, eh.
+- `hemi_brisbane_1` · **[filler]** [cheerful] Half me mates are in Brisbane now. I'd go too, but someone's gotta stay and lose the auctions. [laughs] Keep the numbers up for the boomers, eh.
+- `hemi_decent_1` · **[you did a decent thing]** [pleasantly surprised] Ayy, a landlord did something *nice?* [chuckles] Careful Macka — keep that up and they'll take his licence off him.
+- `hemi_heat_1` · **[high scrutiny]** [amused, knowing] Everyone's real angry online, eh. [dry] Give it a week. We'll be angry at something else, and this fulla'll have bought another one. [warm] Love ya, gotta go.
+- `hemi_filler_2` · **[filler]** [hard-case] Did the sums on buying, Macka. Turns out I need a deposit the size of a small Lotto win and a dad who bought in the nineties. [chuckles] I've got one of those. It's the sad one.
+
 ### D · Ad reads (ADV) — one per fake brand
 - `ad_equitymate` · [bright] EquityMate Home Loans! Seven times your income, zero times your chances! [fast] Feesapply — as does gravity.
 - `ad_brisbane` · [wistful, then bright] Brisbane Departures. Same rent… wages that aren't a dare. Window seat?
@@ -135,11 +146,13 @@ Short, one-off. Prompts to generate against.
 
 ## Part 4 — Numbers & process
 
-- **~52 voice clips + ~4 music pieces.** Voice avg ~180 chars → **≈ 9–10k characters total**, one-off. Fits inside a single month of ElevenLabs' entry tier (and a lean cut fits the free tier). Music is metered separately but it's only a few short pieces.
+- **~59 voice clips + ~4 music pieces.** Voice avg ~180 chars → **≈ 10–11k characters total**, one-off. Fits inside a single month of ElevenLabs' entry tier (and a lean cut fits the free tier). Music is metered separately but it's only a few short pieces.
 - **Generate once → static/cached → free forever, regardless of player count.**
 - **Suggested order:**
-  1. Pick the 4–6 NZ voices in the Voice Library; note their Voice IDs.
-  2. **Test batch first:** generate ~6 signature lines — `host_id_1`, `baz_evict_1`, `geoff_rent_1`, `val_decent_1`, `news_2`, `ad_equitymate`. Listen. Tune voice/stability/style/tags.
+  1. ✅ Voices picked (IDs are in the casting sheet above).
+  2. **Test batch first — one line per voice** (use the **v3 / expressive model** so the tags perform):
+     `host_id_1` · `baz_evict_1` · `hemi_evict_1` · `geoff_rent_1` · `val_decent_1` · `news_2` · `ad_equitymate`
+     Listen, then tune stability/style/tags per voice.
   3. Once it sings, batch the rest.
   4. Hand me the files (or wire the Supabase function) and I map each `clip_id` to its in-game trigger and build the **📻 Newstalk Landlord** player.
 
