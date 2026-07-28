@@ -20,7 +20,7 @@
     <meta property="twitter:description" content="Build a rental empire, squeeze your tenants, buy the politicians who write the rules. A satire of NZ's housing crisis.">
     <meta property="twitter:image" content="https://chalkybones.github.io/Landlord-game/preview.png">
 
-    <link rel="stylesheet" href="style.css?v=20260728b">
+    <link rel="stylesheet" href="style.css?v=20260728c">
 </head>
 <body>
     <div class="app">
@@ -49,12 +49,14 @@
             <div class="ticker-viewport"><div class="ticker-track" id="ticker-track"></div></div>
         </div>
 
-        <!-- ===== GAME OBJECTIVE HUD ===== -->
-        <div class="objective">
-            <span class="obj-chip game">🎮 Satirical idle game</span>
-            <span class="obj-chip win">🎯 Win — get appointed Minister of Housing</span>
-            <span class="obj-chip lose">🔥 Lose — let Public Scrutiny redline &amp; the exposé drops</span>
-            <button class="obj-how" id="obj-how">How to play</button>
+        <!-- ===== COACH / WHAT TO DO NEXT ===== -->
+        <div class="coach" id="coach">
+            <div class="coach-ico" id="coach-ico">💼</div>
+            <div class="coach-body">
+                <div class="coach-label">Your advisor · goal: <b>🎯 become Minister of Housing</b> · don't let the <b>🔥 exposé</b> drop</div>
+                <div class="coach-step" id="coach-step">Every empire starts with a roof over someone else's head.</div>
+            </div>
+            <button class="coach-cta" id="coach-cta">Show me →</button>
         </div>
 
         <!-- ===== STAT DASHBOARD ===== -->
@@ -98,15 +100,7 @@
             <button class="speed-btn" data-speed="1">⏭ Ludicrous</button>
         </div>
 
-        <!-- ===== SPONSORED (rotating fake ad) ===== -->
-        <div class="ad-banner ad-hue-teal" id="ad-banner" role="button" title="It's an ad. Obviously.">
-            <span class="ad-tag">AD</span>
-            <span class="ad-logo" data-logo>🏦</span>
-            <span class="ad-text"><b data-brand>EquityMate Home Loans</b><span class="ad-tagline" data-tagline>7× your income. 0× your chances.</span></span>
-            <span class="ad-fine" data-fine>You will never own this home.</span>
-        </div>
-
-        <!-- ===== NEMESIS: THE REPORTER'S DOSSIER ===== -->
+        <!-- ===== NEMESIS: THE REPORTER'S DOSSIER (revealed once she's on your trail) ===== -->
         <section class="dossier-strip" id="dossier-strip" hidden>
             <div class="dossier-avatar">🕵️‍♀️</div>
             <div class="dossier-body">
@@ -119,8 +113,8 @@
             </div>
         </section>
 
-        <!-- ===== FEATURED TENANTS STRIP ===== -->
-        <section class="tenants-strip panel">
+        <!-- ===== FEATURED TENANTS STRIP (revealed once you own property) ===== -->
+        <section class="tenants-strip panel" id="tenants-strip" hidden>
             <div class="panel-head">
                 <h2>Featured Tenants <span class="muted" id="tenant-total">(0 households)</span></h2>
                 <span class="panel-hint">Real Kiwis, paying your mortgage. Give them a squeeze.</span>
@@ -133,10 +127,10 @@
         <!-- ===== TABS ===== -->
         <nav class="tabs" id="tabs">
             <button class="tab active" data-tab="portfolio"><span class="tab-ico">🏚️</span><span class="tab-lbl">Portfolio</span></button>
-            <button class="tab" data-tab="operations"><span class="tab-ico">💸</span><span class="tab-lbl">Squeeze</span></button>
-            <button class="tab" data-tab="services"><span class="tab-ico">🧾</span><span class="tab-lbl">Services</span></button>
-            <button class="tab" data-tab="politics"><span class="tab-ico">🏛️</span><span class="tab-lbl">Politics</span></button>
-            <button class="tab" data-tab="news"><span class="tab-ico">📰</span><span class="tab-lbl">News</span></button>
+            <button class="tab" data-tab="operations" hidden><span class="tab-ico">💸</span><span class="tab-lbl">Squeeze</span></button>
+            <button class="tab" data-tab="services" hidden><span class="tab-ico">🧾</span><span class="tab-lbl">Services</span></button>
+            <button class="tab" data-tab="politics" hidden><span class="tab-ico">🏛️</span><span class="tab-lbl">Politics</span></button>
+            <button class="tab" data-tab="news" hidden><span class="tab-ico">📰</span><span class="tab-lbl">News</span></button>
         </nav>
 
         <!-- ===== TAB PANELS ===== -->
@@ -207,6 +201,14 @@
             </section>
         </main>
 
+        <!-- ===== SPONSORED (rotating fake ad — demoted below the action) ===== -->
+        <div class="ad-banner ad-hue-teal" id="ad-banner" role="button" title="It's an ad. Obviously.">
+            <span class="ad-tag">AD</span>
+            <span class="ad-logo" data-logo>🏦</span>
+            <span class="ad-text"><b data-brand>EquityMate Home Loans</b><span class="ad-tagline" data-tagline>7× your income. 0× your chances.</span></span>
+            <span class="ad-fine" data-fine>You will never own this home.</span>
+        </div>
+
         <!-- ===== FOOTER ===== -->
         <footer class="footer">
             <div class="footer-actions">
@@ -217,7 +219,7 @@
                 <button id="reset-game" class="utility-btn danger">☠ Reset</button>
             </div>
             <div class="footer-meta">
-                <span class="version">v1.4 — Election Year Edition</span>
+                <span class="version">v1.5 — Election Year Edition</span>
                 <span class="disclaimer">None of it is real. The horrors, however, are load-bearing.</span>
             </div>
         </footer>
@@ -237,6 +239,6 @@
         </div>
     </div>
 
-    <script src="game.js?v=20260728b"></script>
+    <script src="game.js?v=20260728c"></script>
 </body>
 </html>
