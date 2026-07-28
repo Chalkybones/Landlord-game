@@ -162,7 +162,7 @@ const POLITICS = [
       news:s => `Select committee hears from "stakeholders" (you). Tenants hear about it afterwards. Notice periods get shorter; so does the law.` },
 
     { id:'textMinister', emoji:'📱', name:'Text a Minister Directly', political:true, need:{infl:280},
-      cost:(s)=> 90000, spendInfl:200, infl:260,
+      cost:(s)=> 90000 + s.lifetimeInfluence*120, spendInfl:200, infl:260,
       desc:'No official channel, no paper trail — just a mate\'s number and "you around?" It worked for that 2024 board appointment nobody was allowed to ask about.',
       news:s => `A Cabinet-level problem resolved by text, in the grand tradition of an appointment that bypassed the usual process entirely.` },
 
@@ -419,14 +419,16 @@ let state;
 
 function defaultState() {
     const props = {};
-    PROPERTIES.forEach(p => props[p.id] = { count: 0, cost: p.price });
+    // deBasis = de-indexed cost basis: price paid ÷ marketIndex-at-purchase. A unit's
+    // current value is deBasis × marketIndex, so a just-bought unit is worth what you
+    // paid (no instant gain) and only appreciates as the index climbs after purchase.
+    PROPERTIES.forEach(p => props[p.id] = { count: 0, cost: p.price, deBasis: 0 });
     return {
-        v: 2,
+        v: 3,
         money: CFG.START_CASH,
         debt: 0,               // total mortgage owed
         dtiDebt: 0,            // debt that counts against the DTI cap (excludes new-build)
-        basis: 0,              // sum of prices paid (cost basis for valuation)
-        marketIndex: 1,        // portfolio value = basis × marketIndex
+        marketIndex: 1,        // property values drift up with this over time
         rate: CFG.MORTGAGE_RATE,
         heat: 0,
         influence: 0,
@@ -500,8 +502,6 @@ function grossRentWeekly(){
     rent += state.tenants * m.passivePerTenant;
     return Math.max(0, rent);
 }
-/* legacy alias — ops/events/squeeze scale off this positive number */
-function weeklyIncome(){ return grossRentWeekly(); }
 
 function operatingWeekly(){
     const m = multipliers();
@@ -539,7 +539,11 @@ function assessableIncome(){ return CFG.BASE_INCOME + CFG.RENT_SHADE * grossRent
 function maxDebtDTI(){ return CFG.DTI * assessableIncome(); }
 function dtiHeadroom(){ return Math.max(0, maxDebtDTI() - state.dtiDebt); }
 
-function portfolioValue(){ return state.basis * state.marketIndex; }
+function portfolioValue(){
+    let de = 0;
+    PROPERTIES.forEach(p => de += state.properties[p.id].deBasis);
+    return de * state.marketIndex;
+}
 function equity(){ return portfolioValue() - state.debt; }
 function netWorth(){ return state.money + equity(); }
 
@@ -617,23 +621,37 @@ function loadGame(){
     if (!raw){ state = defaultState(); return false; }
     try {
         const loaded = JSON.parse(raw);
+        const savedV = loaded.v || 0;
         state = Object.assign(defaultState(), loaded);
-        PROPERTIES.forEach(p => {
-            if (!state.properties[p.id]) state.properties[p.id] = { count:0, cost:p.price };
-            state.properties[p.id].cost = p.price;   // prices are fixed — heal any legacy escalated value
-        });
-        if (typeof state.dtiDebt !== 'number') state.dtiDebt = state.debt || 0;
-        if (typeof state.basis !== 'number') state.basis = 0;
         state.upgrades = state.upgrades || {};
         state.onceUsed = state.onceUsed || {};
         state.featured = state.featured || [];
+        if (!state.marketIndex) state.marketIndex = 1;
+        PROPERTIES.forEach(p => {
+            const st = state.properties[p.id] || (state.properties[p.id] = { count:0, cost:p.price, deBasis:0 });
+            st.cost = p.price;                       // prices are fixed — heal any legacy escalated value
+            if (typeof st.count !== 'number') st.count = 0;
+            // migrate legacy saves (old global `basis`, no per-type deBasis): value existing
+            // holdings at count×price so net worth is continuous across the upgrade
+            if (typeof st.deBasis !== 'number') st.deBasis = st.count * p.price;
+        });
+        if (typeof state.dtiDebt !== 'number') state.dtiDebt = state.debt || 0;
+        delete state.basis;                          // superseded by per-type deBasis
         if (!state.buyQty) state.buyQty = 1;
         if (!state.rate) state.rate = CFG.MORTGAGE_RATE;
-        if (!state.marketIndex) state.marketIndex = 1;
+        // v<3: Services became weekly hires. Clear any pre-existing hire flags so a legacy
+        // save isn't silently billed retainers it never agreed to (which could even tip it
+        // straight into the collapse ending on load). The player re-engages at will.
+        if (savedV < 3){
+            ['propManager','rentAlgo','compliance','accomSupp','tribunal','astroturf','prFirm','lobbyist']
+                .forEach(id => delete state.upgrades[id]);
+        }
+        state.v = 3;
         return true;
     } catch(e){ state = defaultState(); return false; }
 }
 function offlineProgress(){
+    if (state.speed === 0 || state.ended) return;   // paused (or finished) means time stopped
     const elapsed = (now() - (state.lastUpdate || now())) / 1000;
     if (elapsed < 30) return;
     const capped = Math.min(elapsed, CFG.OFFLINE_CAP_HOURS * 3600);
@@ -857,6 +875,12 @@ function meetsNeed(need){
 }
 
 /* ---- Tenants ---- */
+/* Slots currently mid-departure: idx -> {title,name,job}. Module-scoped and
+   deliberately NOT part of `state`, so it's never saved (a persisted overlay
+   would have no timer to clear it) and resets cleanly on reload. Rendering the
+   overlay from here means any re-render — a sibling exit, a property purchase,
+   a refresh — repaints in-progress departures instead of wiping them. */
+let _leaving = {};
 function makeTenant(){
     const name = makeName();
     const rent = 420 + Math.floor(Math.random()*10)*35;
@@ -901,6 +925,14 @@ function renderTenants(){
         card.querySelector('[data-squeeze]').addEventListener('click', (e)=> squeezeTenant(idx, e));
         card.querySelector('[data-strain]').style.width = clamp(t.strain,0,100) + '%';
         card.querySelector('[data-strainlabel]').textContent = strainWord(t.strain);
+        const L = _leaving[idx];
+        if (L){
+            card.classList.add('left');
+            const ov = document.createElement('div');
+            ov.className = 'tenant-gone';
+            ov.innerHTML = `<div class="gone-title">${L.title}</div><div class="gone-name">${L.name} moved out</div><div class="gone-sub">${L.job}</div>`;
+            card.appendChild(ov);
+        }
     });
 }
 function updateTenantStrain(){
@@ -941,9 +973,10 @@ function buyProperty(id, e){
     state.debt += plan.loan;
     if (!p.newBuild) state.dtiDebt += plan.loan;
     st.count += plan.n;
-    state.basis += plan.n * p.price;
+    st.deBasis += plan.n * p.price / state.marketIndex;   // banked at today's index → no instant gain
 
     fx('−'+money(plan.deposit)+' down', 'neg', e);
+    flashCash(true);
     blip(180);
     const label = plan.n > 1 ? `${plan.n} more ${p.name.toLowerCase()}s` : `a ${p.name.toLowerCase()}`;
     addNews(`You mortgaged into ${label}. ${money(plan.loan)} of debt, someone else\'s roof, and a first-home buyer who just watched it sell.`, 'bad');
@@ -958,6 +991,7 @@ function releaseEquity(e){
     state.debt += room;
     state.dtiDebt += room;   // owner drawdown counts against DTI
     fx('+'+money(room), 'pos', e);
+    flashCash(false);
     blip(240);
     addNews(`Refinanced. Your houses earned more than you did, so you remortgaged them and pocketed ${money(room)} to buy another. This is called "wealth creation."`, 'event');
     refresh();
@@ -972,8 +1006,10 @@ function doOperation(op, e){
         const v = op.money(state, m);
         state.money += v;
         fx((v<0?'−':'+')+money(Math.abs(v)), v<0?'neg':'pos', e);
+        flashCash(v < 0);
     } else if (op.cost){
         fx('−'+money(op.cost), 'neg', e);
+        flashCash(true);
     }
 
     if (op.rentBoost){ state.rentMultBonus += op.rentBoost; state.rentRaises++; }
@@ -994,7 +1030,7 @@ function doOperation(op, e){
     if (op.id === 'inventFee') state.feesInvented++;
     if (op.evicts){ state.evictions++; evictSomeone(); }
     if (op.removesHousehold){ state.extraUnits = Math.max(state.extraUnits-1, -baseTenantsFromProps()+1); }
-    if (op.sell){ const sc = sellTopProperty(op.sell === 'cost'); if (sc) fx('+'+money(sc), 'pos', e); }
+    if (op.sell){ const sc = sellTopProperty(op.sell === 'cost'); if (sc){ fx('+'+money(sc), 'pos', e); flashCash(false); } }
     if (op.fhb){ state.fhbSales++; checkRedemption(); }
 
     if (op.strain) state.featured.forEach(t=> t.strain = clamp(t.strain + op.strain, 0, 100));
@@ -1006,21 +1042,24 @@ function doOperation(op, e){
 }
 
 /* sell one unit of the priciest owned type; clears its share of the mortgage.
-   'market' realises current value (appreciation included); 'cost' sells at the
-   price you paid (you forgo the gain). No windfall premium — that was an
-   arbitrage: 35% down + a >1× sale = buy-then-flip infinite money. */
+   'market' realises the average held unit's CURRENT value (deBasis × index — real
+   appreciation, only what actually accrued while you held it); 'cost' sells at the
+   price you paid (you forgo the gain). Because a fresh purchase banks its basis at
+   today's index, an immediate re-sale nets ≈0 — no buy-then-flip arbitrage. */
 function sellTopProperty(atCost){
     let best = 0, id = null;
     PROPERTIES.forEach(p=>{ if (state.properties[p.id].count>0 && p.price>best){ best=p.price; id=p.id; } });
     if (!id) return 0;
     const p = PROPERTIES.find(x=>x.id===id);
-    const sale = atCost ? p.price : p.price * state.marketIndex;
+    const st = state.properties[id];
+    const avgDe = st.count > 0 ? st.deBasis / st.count : 0;   // de-indexed basis of the average unit
+    const sale = atCost ? p.price : avgDe * state.marketIndex;
     const loanShare = Math.min(state.debt, p.price * (1 - p.deposit));
     const cashOut = Math.max(0, sale - loanShare);
-    state.properties[id].count--;
+    st.count--;
+    st.deBasis = Math.max(0, st.deBasis - avgDe);
     state.debt = Math.max(0, state.debt - loanShare);
     if (!p.newBuild) state.dtiDebt = Math.max(0, state.dtiDebt - loanShare);
-    state.basis = Math.max(0, state.basis - p.price);
     state.money += cashOut;
     return cashOut;
 }
@@ -1031,20 +1070,21 @@ function sellTopProperty(atCost){
 function tenantExits(idx, title, newsText, opts){
     opts = opts || {};
     const t = state.featured[idx]; if (!t) return;
-    const card = $('tenant-cards').children[idx];
-    if (card){
-        card.classList.add('left');
-        const ov = document.createElement('div');
-        ov.className = 'tenant-gone';
-        ov.innerHTML = `<div class="gone-title">${title}</div><div class="gone-name">${t.name} moved out</div><div class="gone-sub">${t.job}</div>`;
-        card.appendChild(ov);
-    }
-    if (opts.cost) state.money -= opts.cost;
+    if (_leaving[idx]) return;                 // already departing — ignore a double-trigger
+    _leaving[idx] = { title, name:t.name, job:t.job };
+    if (opts.cost){ state.money -= opts.cost; flashCash(true); }
     if (opts.heat) addHeat(opts.heat * multipliers().heatGen);
     if (opts.toast) toast(opts.toast, 'bad');
     if (newsText) addNews(newsText, 'bad');
     blip(150);
-    setTimeout(()=>{ state.featured[idx] = makeTenant(); renderTenants(); refresh(); }, 1600);
+    renderTenants();                           // paints the "moved out" overlay via the shared path
+    setTimeout(()=>{
+        delete _leaving[idx];
+        // replace by identity: only if this exact tenant is still in that slot (syncTenants
+        // may have popped it already), so a resized array never gets a sparse hole
+        if (state.featured[idx] === t) state.featured[idx] = makeTenant();
+        renderTenants(); refresh();
+    }, 1600);
     refresh();
 }
 
@@ -1059,9 +1099,9 @@ function evictSomeone(){
 
 function squeezeTenant(idx, e){
     const t = state.featured[idx]; if (!t) return;
-    const card = $('tenant-cards').children[idx];
-    if (card && card.classList.contains('left')) return;  // already leaving
+    if (_leaving[idx]) return;              // already leaving — no double-squeeze
 
+    const card = $('tenant-cards').children[idx];
     const bump = 20 + Math.floor(Math.random()*25);
     t.rent += bump;
     t.strain = clamp(t.strain + 24 + Math.floor(Math.random()*8), 0, 100);
@@ -1069,6 +1109,7 @@ function squeezeTenant(idx, e){
     state.rentMultBonus += 0.003;          // squeezing individuals nudges your whole rent roll up
     state.rentRaises++;
     fx('+'+money(bump*6), 'pos', e);
+    flashCash(false);
     addHeat(4 * multipliers().heatGen, e);
     blip(220);
     if (card){ const rn = card.querySelector('.rent-num'); if (rn) rn.textContent = money(t.rent) + '/wk'; }
@@ -1079,6 +1120,7 @@ function squeezeTenant(idx, e){
             { cost: 2500 + state.tenants*90, heat: 8, toast: `${t.name} was priced out — moved on. Voids and re-lets aren't free.` });
         return;
     }
+    if (card){ card.classList.remove('breaking'); void card.offsetWidth; card.classList.add('breaking'); setTimeout(()=>{ if (card) card.classList.remove('breaking'); }, 360); }
     addNews(`Rent raised on ${t.name.split(' ')[0]} by ${money(bump)}/wk. "A modest market adjustment," you tell no one who asked.`, 'bad');
     refresh();
 }
@@ -1092,6 +1134,7 @@ function buyService(sv, e){
         state.money -= sv.cost;
         state.upgrades[sv.id] = true;
         fx('−'+money(sv.cost), 'neg', e);
+        flashCash(true);
         blip(300);
         toast(`Bought: ${sv.name}. Yours, permanently.`, 'good');
         addNews(`Bought "${sv.name}." An offshore accountant somewhere feels a warm glow.`, 'event');
@@ -1113,7 +1156,7 @@ function buyService(sv, e){
     if (!meetsNeed(sv.need).ok) return;
     const signup = sv.signup || 0;
     if (state.money < signup) return;
-    if (signup){ state.money -= signup; fx('−'+money(signup), 'neg', e); }
+    if (signup){ state.money -= signup; fx('−'+money(signup), 'neg', e); flashCash(true); }
     state.upgrades[sv.id] = true;
     blip(300);
     toast(`Engaged: ${sv.name}. ${money(serviceFee(sv))}/wk from here on — cancel any time.`, 'good');
@@ -1128,6 +1171,7 @@ function doPolitics(pa, e){
     if (pa.spendInfl && state.influence < pa.spendInfl) return;
     state.money -= cost;
     fx('−'+money(cost), 'neg', e);
+    flashCash(true);
     if (pa.spendInfl){ state.influence -= pa.spendInfl; fx('−'+pa.spendInfl+' infl', 'neg', e); }
     if (pa.infl){ addInfluence(pa.infl, e); }
     if (pa.heat){ addHeat(pa.heat, e); }
@@ -1178,7 +1222,7 @@ function onWeek(){
     } else state.heatMaxStreak = 0;
 }
 
-function setRate(delta, label){
+function setRate(delta){
     state.rate = clamp(state.rate + delta, CFG.RATE_MIN, CFG.RATE_MAX);
 }
 
@@ -1279,8 +1323,12 @@ function checkRedemption(){
 
 function triggerEnding(kind){
     if (state.ended) return;
-    state.ended = true; state.speed = 0; setSpeedButtons();
-
+    state.ended = true; state.endingKind = kind; state.speed = 0; setSpeedButtons();
+    showEndingModal(kind);
+}
+/* builds & shows the end-screen — separated so init() can re-show it after a reload
+   (the ended flag is persisted, so without this the board would come back frozen). */
+function showEndingModal(kind){
     const stats = `
         <div class="stat-grid">
             <div>Properties<b>${propertyCount()}</b></div>
@@ -1338,6 +1386,7 @@ function doPrestige(){
             state.upgrades = keep.upgrades; state.legacy = keep.legacy; state.influence = keep.influence;
             state.lifetimeInfluence = keep.lifetime; state.muted = keep.muted; state.buyQty = keep.buyQty;
             state._phaseSeen = 0; state._unlockedSeen = unlockedTierCount();
+            _leaving = {};
             syncTenants(); buildAll(); closeModal();
             toast(`Restructured. Legacy tier ${keep.legacy}. Nothing is your fault now.`, 'gold');
             refresh(); saveGame(true);
@@ -1403,6 +1452,16 @@ function fx(text, cls, e, offsetY){
     layer.appendChild(span);
     setTimeout(()=> span.remove(), 1150);
 }
+/* flash the Portfolio Cash figure on a discrete money change (green up / red down).
+   Only fired from explicit player actions & events — never from passive accrual. */
+function flashCash(neg){
+    const el = $('money'); if (!el) return;
+    const cls = neg ? 'flash-red' : 'flash';
+    el.classList.remove('flash', 'flash-red');
+    void el.offsetWidth;                 // restart the CSS animation
+    el.classList.add(cls);
+    setTimeout(()=>{ if (el) el.classList.remove(cls); }, 520);
+}
 function toast(text, cls){
     const layer = $('toast-layer');
     const t = document.createElement('div');
@@ -1465,7 +1524,7 @@ function modalHelp(){
         <p><b>1. Buy on leverage.</b> You don't pay cash for houses — you put down a <b>deposit</b> (investors ~35%) and the bank lends the rest as a mortgage. The debt costs weekly interest, so cheap provincial stock earns, while Auckland &amp; prestige homes <span style="color:var(--red-dark)">bleed cash</span> — you buy those for the capital gain.</p>
         <p><b>2. The bank is the game.</b> It lends up to <b>7× your income</b>, counting ~78% of your rent — so every rent rise unlocks more borrowing. (A first-home buyer gets 6× and counts none of it. That's the joke, and the mechanic.) New builds dodge the limits entirely.</p>
         <p><b>3. Squeeze (the 💸 Squeeze tab).</b> Raise rents and invent fees for cash — and borrowing power. Every squeeze raises <span style="color:#b25a15;font-weight:700">Scrutiny</span>.</p>
-        <p><b>4. Buy Influence (Politics) &amp; Retain Services.</b> Turn cash into political capital to spike stories and rewrite the rules. Watch the OCR — a rate hike lifts everyone's mortgage and can trigger the <b>Market Correction</b>.</p>
+        <p><b>4. Buy Influence (Politics) &amp; hire Services.</b> Turn cash into political capital to spike stories and rewrite the rules. Services are mostly <b>weekly hires</b> — worth it only once they earn their keep. Watch the OCR — a rate hike lifts everyone's mortgage and can trigger the <b>Market Correction</b>.</p>
     `, [{ label:'Let\'s ruin some lives', cls:'primary', fn:()=> closeModal() }]);
 }
 
@@ -1641,7 +1700,13 @@ function init(){
     const adEl = $('ad-banner'); if (adEl) adEl.addEventListener('click', adClick);
     setInterval(()=> saveGame(true), 20000);
     window.addEventListener('beforeunload', ()=> saveGame(true));
-    if (!had) setTimeout(modalIntro, 400);
+    if (state.ended){
+        // the save persisted a finished game — re-show the end screen instead of a frozen board
+        state.speed = 0; setSpeedButtons();
+        setTimeout(()=> showEndingModal(state.endingKind || 'empire'), 300);
+    } else if (!had){
+        setTimeout(modalIntro, 400);
+    }
 }
 
 init();

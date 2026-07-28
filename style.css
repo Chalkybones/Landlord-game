@@ -166,7 +166,9 @@ body {
 .empty-note { color: var(--muted); font-style: italic; padding: 14px; text-align: center; }
 
 /* ---------- Featured tenants ---------- */
-.tenant-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+/* auto-fit (not auto-fill) so the cards always fill the strip's width — no dead
+   whitespace when you only have one or two featured households early on */
+.tenant-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .tenant-card {
     border: 1px solid var(--line); border-radius: 12px; padding: 13px; background: #fbfdfd;
     display: flex; flex-direction: column; gap: 8px; position: relative; transition: transform .1s;
@@ -451,10 +453,11 @@ body {
     .phase-name { font-size: .82em; }
     .icon-btn { width: 32px; height: 32px; }
 
-    /* slim objective HUD: one swipeable row, drop the redundant How-to-play (use ? ) */
-    .objective { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding: 8px 10px; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
-    .objective::-webkit-scrollbar { display: none; }
-    .obj-chip { flex: 0 0 auto; font-size: .72em; padding: 5px 10px; white-space: nowrap; }
+    /* objective HUD: wrap so win/lose conditions read in full (no clipped scroll);
+       drop the redundant How-to-play link (the ? button covers it) */
+    .objective { flex-wrap: wrap; gap: 6px; padding: 8px 10px; margin-bottom: 10px; }
+    .obj-chip { font-size: .72em; padding: 5px 10px; }
+    .obj-chip.win, .obj-chip.lose { white-space: normal; }
     .obj-how { display: none; }
 
     /* compact dashboard: cash hero, scrutiny + influence share a row */
@@ -466,6 +469,10 @@ body {
     .scrutiny-tile .stat-foot, .influence-tile .stat-foot { display: none; }
     .influence-tile .stat-big { font-size: 1.35em; }
     .meter { height: 16px; margin: 6px 0 0; }
+    /* the half-width scrutiny & influence tiles can't fit label + long trend on
+       one line — stack them so the trend (e.g. "Party Donor (Bronze)") never clips */
+    .scrutiny-tile .stat-top, .influence-tile .stat-top { flex-direction: column; align-items: flex-start; gap: 1px; margin-bottom: 4px; }
+    .scrutiny-tile .stat-trend, .influence-tile .stat-trend { white-space: normal; line-height: 1.2; }
 
     /* speed controls: tighter */
     .speed-controls { padding: 7px 8px; gap: 6px; margin-bottom: 10px; }
