@@ -26,6 +26,8 @@ const CFG = {
     OFFLINE_CAP_HOURS: 8,
     NEWS_COOLDOWN: 24,
     EVENT_COOLDOWN: 6,
+    DILEMMA_COOLDOWN: 38,       // min real seconds between interactive dilemmas
+    DILEMMA_PROB: 0.16,         // per-eligible-week chance one fires
     SAVE_KEY: 'kiwiLandlordEmpire_v2',
     LEGACY_BONUS: 0.15,        // +15% permanent rent per Restructure
     // --- the bank ---
@@ -445,6 +447,7 @@ function defaultState() {
         speed: CFG.DEFAULT_SPEED,
         buyQty: 1,
         lastUpdate: now(),
+        _lastDilemma: now()/1000,   // grace period before the first dilemma (also avoids epoch instant-fire)
         weekFrac: 0,
         muted: false,
         evictions: 0, rentRaises: 0, violations: 0, bribes: 0,
@@ -1213,13 +1216,17 @@ function onWeek(){
         state._lastAd = nowS;
     }
     const eventProb = 0.03 + (state.heat/100) * 0.4;
+    let firedEvent = false;
     if (nowS - (state._lastEvent||0) > CFG.EVENT_COOLDOWN && Math.random() < eventProb){
-        rollEvent(); state._lastEvent = nowS;
+        rollEvent(); state._lastEvent = nowS; firedEvent = true;
     }
     if (state.heat >= CFG.HEAT_MAX - 1 && state.influence < 200){
         state.heatMaxStreak++;
         if (state.heatMaxStreak >= 3){ triggerEnding('expose'); return; }
     } else state.heatMaxStreak = 0;
+    // an interactive "advisory" dilemma — the game pauses and asks you to choose.
+    // (skipped on a week that already fired a scripted event, so they don't stack)
+    if (!firedEvent) maybeDilemma(nowS);
 }
 
 function setRate(delta){
@@ -1232,6 +1239,43 @@ function rollEvent(){
     if (pool.length === 0) return;
     pick(pool).run();
     refresh();
+}
+
+/* ---- Interactive dilemmas: the game pauses and hands you a satirical choice ---- */
+let _dilemmaOpen = false;
+function maybeDilemma(nowS){
+    if (_dilemmaOpen || state.ended) return false;
+    if (!$('modal-overlay').hidden) return false;      // never replace an open modal (intro/help/offline)
+    if (nowS - (state._lastDilemma||0) < CFG.DILEMMA_COOLDOWN) return false;
+    if (Math.random() > CFG.DILEMMA_PROB) return false;
+    const pool = DILEMMAS.filter(d =>
+        (!d.minPhase || phaseInfo().i >= d.minPhase) &&
+        (!d.cond || d.cond()) &&
+        !(d.once && state.onceUsed['dil_'+d.id]));
+    if (!pool.length) return false;
+    state._lastDilemma = nowS;
+    openDilemma(pick(pool));
+    return true;
+}
+function openDilemma(d){
+    _dilemmaOpen = true;
+    const prevSpeed = state.speed;
+    state.speed = 0; setSpeedButtons();          // pause so the decision gets read
+    const actions = d.choices.map(c => ({
+        label: c.label, cls: c.cls || 'primary',
+        fn: ()=>{
+            _dilemmaOpen = false;
+            state.speed = prevSpeed; setSpeedButtons();
+            closeModal();
+            try { if (c.apply) c.apply(state); } catch(e){}
+            if (d.once) state.onceUsed['dil_'+d.id] = true;
+            if (c.result) addNews(c.result, c.news || 'event');
+            if (c.toast) toast(c.toast, c.toastCls || 'gold');
+            blip(c.blip || 300);
+            refresh();
+        }
+    }));
+    showModal(`<div class="modal-kicker">${d.kicker || 'PortfolioMax™ Advisory'}</div><h1>${d.title}</h1>${d.body}`, actions);
 }
 
 const EVENTS = [
@@ -1296,17 +1340,141 @@ const EVENTS = [
         }
     }},
     { tier:3, cond:()=> propertyCount()>=6, run(){
-        state.marketIndex *= 0.92;
+        state.marketIndex *= 0.92; shake();
         addNews(`📉 EVENT: Market correction — values slide 8% as the "recovery" stalls. Your equity thins and the over-leveraged wobble. Debt, however, does not shrink.`, 'bad');
     }},
     { tier:3, cond:()=> state.tenants>=6, run(){
-        const loss = Math.floor(grossRentWeekly()*3); state.money -= loss; addHeat(5);
+        const loss = Math.floor(grossRentWeekly()*3); state.money -= loss; addHeat(5); shake();
         addNews(`✊ EVENT: RENT STRIKE. Your tenants collectively withhold. −${money(loss)} while they hold the line and you hold your breath.`, 'bad');
     }},
     { tier:3, run(){
         addHeat(4);
         addNews(`📣 EVENT: Protesters outside your Remuera villa with a banner: "HOUSES ARE FOR LIVING IN." You draw the curtains (imported, blockout).`, 'bad');
     }},
+];
+
+/* ------------------------------------------------------------------ DILEMMAS
+   Interactive choices that pause the game. Each is a small satirical set-piece
+   with real trade-offs (cash / scrutiny / influence). `apply(s)` mutates state;
+   `result` drops a news line; `cls:'ghost'` marks the restrained/decent option. */
+const DILEMMAS = [
+    { id:'tiktok', title:'It\'s trending 📱',
+      body:`<p>A tenant's phone-tour of the black mould in their kids' bedroom hits <b>400,000 views</b> overnight. The caption is just your name and a skull emoji.</p>`,
+      choices:[
+        { label:'"It\'s lifestyle condensation"', apply:s=> addHeat(9),
+          result:`You blame "lifestyle moisture — too many showers, too much breathing." The internet blames you. The mould, neutral, keeps growing.`, news:'bad' },
+        { label:'$50 Prezzy card + a 4-page NDA', apply:s=>{ s.money -= 3000; addHeat(-7); },
+          result:`A supermarket voucher and a non-disclosure agreement later, the video vanishes. So does the tenant's last shred of faith in adults.`, news:'event' },
+        { label:'Ride it out', cls:'ghost', apply:s=> addHeat(13),
+          result:`You log off, confident it'll blow over. It does not blow over. It gets a follow-up. The follow-up has a lawyer in it.`, news:'bad' },
+      ]},
+    { id:'church', title:'A structure presents itself ⛪', minPhase:1,
+      body:`<p>Your accountant, eyes shining, slides over a folder. "Register the entire portfolio," he whispers, "<b>as a religion.</b> Fully tax-exempt. Legally, a miracle."</p>`,
+      choices:[
+        { label:'Praise be — go tax-free', apply:s=>{ s.rentMultBonus += 0.025; addHeat(6); },
+          result:`The Church of Perpetual Yield is now a registered charity. Sunday service is a rent review. The collection plate is a direct debit.`, news:'event', toast:'Blessed are the leveraged. +permanent yield.' },
+        { label:'Even you have a limit', cls:'ghost',
+          result:`You decline, on the grounds that it's "a bit much." A rare flicker of shame. It passes by morning, like all the others.`, news:'event' },
+      ]},
+    { id:'photoop', title:'A photo opportunity 📸',
+      body:`<p>A backbench MP wants to be pictured at "one of your <i>affordable</i> rentals." Cameras at ten. None of your rentals are affordable, or photogenic.</p>`,
+      choices:[
+        { label:'Stage the good one; motel the tenant', apply:s=>{ s.money -= 2000; addInfluence(40); addHeat(5); },
+          result:`You move the tenant to a motel for the day and fill the flat with a fruit bowl. The MP calls it "the mixed market working." Checkout was 10am.`, news:'event' },
+        { label:'Decline', cls:'ghost',
+          result:`You pass. The MP finds a more accommodating landlord within the hour. There is always a more accommodating landlord.`, news:'event' },
+      ]},
+    { id:'winston', title:'Winston is on the line 🐎', minPhase:2,
+      body:`<p>A gravelled voice you half-recognise mentions "an opportunity — a racehorse, a syndicate, and a select-committee timetable that could go either way."</p>`,
+      choices:[
+        { label:'"I\'m listening"', apply:s=>{ s.money -= 25000; addInfluence(60); },
+          result:`You now own 4% of a horse named Deductible and 100% of a minister's undivided, deniable attention. The horse has better form.`, news:'event' },
+        { label:'Hang up', cls:'ghost',
+          result:`You hang up. Somewhere, a phone is already dialling the next number on a very short, very expensive list.`, news:'event' },
+      ]},
+    { id:'kid', title:'A question at dinner 🍽',
+      body:`<p>Your kid looks up from their plate. "Dad — why did the family in the newspaper have to leave their house? They didn't do anything."</p>`,
+      choices:[
+        { label:'Explain supply and demand', apply:s=> addHeat(2),
+          result:`You explain the market with the salt and pepper shakers. They nod slowly — the way children nod when they've caught an adult lying and decided to let it go.`, news:'event' },
+        { label:'Change the subject', cls:'ghost',
+          result:`You ask about their day instead. They let you. Kids are kinder to us than we deserve, which is its own kind of rent.`, news:'event' },
+        { label:'…sell that family the house at cost', cls:'ghost',
+          apply:s=>{ s.fhbSales++; toast('You did a decent thing. Nobody will believe it.', 'good'); setTimeout(checkRedemption, 50); },
+          result:`You call the agent that night and sell to the family in the photo, at what you paid. For one evening, you're the landlord your kid already thinks you are.`, news:'good' },
+      ]},
+    { id:'rnz', title:'A reporter wants comment 🎙', minPhase:1,
+      body:`<p>An RNZ journalist emails: comment on "your portfolio and its practices" by <b>5pm</b>. Attached: the mould photos, the fee schedule, and a spreadsheet with your name bolded.</p>`,
+      choices:[
+        { label:'"No comment" + a lawyer\'s letter', apply:s=> addHeat(7),
+          result:`Your lawyer's threatening letter becomes the story. It is, everyone agrees, a very good story. Streisand would understand.`, news:'bad' },
+        { label:'Charm-offensive lunch ($4k)', apply:s=>{ s.money -= 4000; addHeat(-10); },
+          result:`Two hours and a degustation later she "can't stand the story up — yet." You pick up the bill and the tab on her goodwill.`, news:'event' },
+      ]},
+    { id:'bank', title:'"You\'re under-leveraged" 🏦',
+      body:`<p>Your relationship manager frowns at your file like it's personally disappointed her. "Someone of your standing," she says, "should be carrying <i>far</i> more debt."</p>`,
+      choices:[
+        { label:'Gear up — draw it all down', apply:s=>{ const room = borrowable(); s.money += room; s.debt += room; s.dtiDebt += room; },
+          result:`You borrow against the borrowing against the borrowing. The manager beams. Somewhere in a basement, a stress-test model quietly files for stress leave.`, news:'event', toast:'Maximum leverage engaged. What could go wrong.' },
+        { label:'Keep some powder dry', cls:'ghost',
+          result:`You decline to gear up further. The manager notes, coolly, that you're "not really a growth mindset." You'll never eat lunch in that branch again.`, news:'event' },
+      ]},
+    { id:'panama', title:'Your name is in the leak 🗂', minPhase:2,
+      body:`<p>An offshore-trust database has been leaked to a consortium of journalists. Your name is in it, next to a shell company named — regrettably — "Squeeze Holdings II."</p>`,
+      choices:[
+        { label:'Deny — "different J. Smith"', apply:s=> addHeat(8),
+          result:`You insist it's a <i>different</i> you. There are, you point out, many of you. This is, unfortunately, the emerging theme of the coverage.`, news:'bad' },
+        { label:'Blame the accountant', cls:'ghost', apply:s=>{ s.money -= 10000; addHeat(-4); },
+          result:`The accountant takes the fall and a generous "consultancy exit." Loyalty has a price and, conveniently, it's fully deductible.`, news:'event' },
+      ]},
+    { id:'heatpump', title:'The heat pump, again ❄️',
+      body:`<p>A tenant with a three-week-old baby emails for the fifth time about the dead heat pump. It is June. The forecast is "brisk." The email is very polite, which is somehow worse.</p>`,
+      choices:[
+        { label:'Actually fix it ($3.5k)', cls:'ghost', apply:s=>{ s.money -= 3500; addHeat(-5); },
+          result:`You send someone. The heat pump wheezes back to life; the baby is warm. You feel a strange, unfamiliar warmth of your own. Deeply suspicious, you have it checked. It's a conscience. It clears up.`, news:'good' },
+        { label:'Invoice a "servicing surcharge"', apply:s=>{ s.money += 500; addHeat(6); s.feesInvented++; },
+          result:`You bill them $500 for the reminder emails and reclassify the heat pump as "a modernist sculpture — non-operational by design."`, news:'bad' },
+      ]},
+    { id:'award', title:'Landlord of the Year 🏆', minPhase:1,
+      body:`<p>The Property Investors' Federation would like to present you with <b>Landlord of the Year</b>. There will be a gala, a trophy, and — unavoidably — press.</p>`,
+      choices:[
+        { label:'Accept the trophy', apply:s=>{ addInfluence(50); addHeat(8); },
+          result:`Your acceptance speech thanks "the tenants, without whom none of this rent would be possible." The room laughs. One waiter does not.`, news:'event' },
+        { label:'Decline — too hot right now', cls:'ghost', apply:s=> addHeat(-4),
+          result:`You decline quietly. Humility is the ultimate flex, and — your PR firm notes approvingly — completely free.`, news:'event' },
+      ]},
+    { id:'ghostflat', title:'Thirty dark windows 🌃', minPhase:2,
+      body:`<p>An offshore owner offers you a management contract for <b>30 apartments they never intend to rent</b> — held empty, purely to appreciate. Easy fee. No tenants, no complaints, no people.</p>`,
+      choices:[
+        { label:'Manage the empties', apply:s=>{ s.money += 15000; addHeat(4); },
+          result:`Thirty apartments, professionally kept empty, lights on timers so they "look lived in." The housing shortage, professionally maintained.`, news:'event' },
+        { label:'Pass — even for you', cls:'ghost',
+          result:`You pass. Empty homes in a housing crisis is, you decide, a bad look. The fee finds someone with a better look, or none at all.`, news:'event' },
+      ]},
+    { id:'ministerText', title:'A minister texts you 📲', minPhase:3,
+      body:`<p>A Cabinet minister forwards you a <b>draft Bill "for your thoughts"</b> — before it's public, before the tenants it governs have heard a word of it.</p>`,
+      choices:[
+        { label:'Suggest "improvements"', apply:s=>{ s.permHeatMult *= 0.9; addInfluence(40); },
+          result:`Your redlines make it into the Bill verbatim. The public consultation runs later — a formality you've already, privately, completed.`, news:'event', toast:'You are now, functionally, the policy.' },
+        { label:'Screenshot it for later', cls:'ghost', apply:s=>{ addInfluence(80); addHeat(6); },
+          result:`You keep the receipt. Everyone in this game keeps receipts — it's the only thing anyone's actually building.`, news:'event' },
+      ]},
+    { id:'rival', title:'A rival makes an offer 🛥', minPhase:1,
+      body:`<p>A bigger landlord — nicer boat, worse Google reviews — offers <b>cash today</b> for your leakiest, most troublesome block. He seems oddly, specifically keen.</p>`,
+      choices:[
+        { label:'Sell it — his problem now', apply:s=>{ const c = sellTopProperty(false); if (c) fx('+'+money(c),'pos',{clientX:innerWidth/2,clientY:200}); },
+          result:`He overpays without blinking. Either he knows something you don't, or he's a fool. In this market those pay identically.`, news:'event' },
+        { label:'Hold — what does he know?', cls:'ghost',
+          result:`You hold. If he wants it this badly, you reason, it must be worth keeping. This is exactly how he wanted you to reason.`, news:'event' },
+      ]},
+    { id:'protest', title:'A crowd outside 📣', cond:()=> state.heat > 35,
+      body:`<p>Renters are protesting outside your office. Someone has made a genuinely excellent sign. A camera crew has arrived to film the genuinely excellent sign.</p>`,
+      choices:[
+        { label:'Send out coffee + a warm statement', apply:s=>{ s.money -= 500; addHeat(-6); },
+          result:`You send down flat whites and a statement about "shared challenges." The sign stays up, but the six-o'clock photo softens to lukewarm.`, news:'event' },
+        { label:'Call it "economic illiteracy" on talkback', apply:s=>{ addHeat(10); addInfluence(20); },
+          result:`You go on the radio and call them economically illiterate. The base adores it. The nurses do not — but the nurses, you note, were never the base.`, news:'bad' },
+      ]},
 ];
 
 /* =============================================================== ENDINGS */
@@ -1324,7 +1492,12 @@ function checkRedemption(){
 function triggerEnding(kind){
     if (state.ended) return;
     state.ended = true; state.endingKind = kind; state.speed = 0; setSpeedButtons();
+    _dilemmaOpen = false;
+    if (kind === 'expose' || kind === 'collapse') shake();
     showEndingModal(kind);
+    if (kind === 'empire' || kind === 'minister' || kind === 'reform'){
+        confetti(160); setTimeout(()=> confetti(120), 500);
+    }
 }
 /* builds & shows the end-screen — separated so init() can re-show it after a reload
    (the ended flag is persisted, so without this the board would come back frozen). */
@@ -1451,6 +1624,29 @@ function fx(text, cls, e, offsetY){
     span.style.left = x + 'px'; span.style.top = y + 'px';
     layer.appendChild(span);
     setTimeout(()=> span.remove(), 1150);
+}
+/* a short screen-shake for crisis beats (exposé, crash, rent strike) */
+function shake(){
+    const a = document.querySelector('.app'); if (!a) return;
+    a.classList.remove('shake'); void a.offsetWidth; a.classList.add('shake');
+    setTimeout(()=>{ if (a) a.classList.remove('shake'); }, 520);
+}
+/* celebratory confetti burst for phase-ups and winning endings */
+function confetti(n){
+    const layer = $('fx-layer'); if (!layer) return;
+    const colors = ['#00858E','#E0A500','#2FA36B','#ef6a4d','#7b5ea7','#17A2A2'];
+    n = n || 90;
+    for (let i=0;i<n;i++){
+        const d = document.createElement('div');
+        d.className = 'confetti';
+        d.style.left = (Math.random()*100).toFixed(1) + 'vw';
+        d.style.background = colors[i % colors.length];
+        d.style.animationDelay = (Math.random()*0.4).toFixed(2) + 's';
+        d.style.setProperty('--dx', (Math.random()*260-130).toFixed(0)+'px');
+        d.style.setProperty('--rot', (Math.random()*720-360).toFixed(0)+'deg');
+        layer.appendChild(d);
+        setTimeout(()=> d.remove(), 3000);
+    }
 }
 /* flash the Portfolio Cash figure on a discrete money change (green up / red down).
    Only fired from explicit player actions & events — never from passive accrual. */
@@ -1595,7 +1791,7 @@ function refresh(){
         state._phaseSeen = ph.i;
         toast(`📈 You are now: ${ph.name}`, 'gold');
         addNews(`You've ascended to <b>${ph.name}</b>. The circles you move in now have valet parking and worse ethics.`, 'event');
-        blip(420);
+        blip(420); confetti(70);
     } else if (ph.i < state._phaseSeen) state._phaseSeen = ph.i;
 
     const unlocked = unlockedTierCount();
@@ -1610,6 +1806,11 @@ function refresh(){
     $('scrutiny-tier').textContent = tier.trend;
     $('scrutiny-foot').textContent = tier.foot;
     document.querySelector('.scrutiny-tile').classList.toggle('hot', state.heat >= 80);
+    document.body.classList.toggle('redline', state.heat >= 85);   // danger vignette
+    if (tier.i >= 3 && !state._crisisSeen){
+        state._crisisSeen = true; shake();
+        toast('🔥 The press is circling. Spend influence to cool it — or lose the lot.', 'bad');
+    } else if (tier.i < 3) state._crisisSeen = false;
 
     $('influence').textContent = fmt(state.influence);
     $('influence-title').textContent = influenceTitle();
@@ -1678,8 +1879,8 @@ function setupEvents(){
     $('help-btn').addEventListener('click', modalHelp);
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
-    $('modal-overlay').addEventListener('click', (e)=>{ if (e.target === $('modal-overlay') && !state.ended) closeModal(); });
-    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !state.ended) closeModal(); });
+    $('modal-overlay').addEventListener('click', (e)=>{ if (e.target === $('modal-overlay') && !state.ended && !_dilemmaOpen) closeModal(); });
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !state.ended && !_dilemmaOpen) closeModal(); });
 }
 
 function init(){
