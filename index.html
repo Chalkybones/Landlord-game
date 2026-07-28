@@ -20,7 +20,7 @@
     <meta property="twitter:description" content="Build a rental empire, squeeze your tenants, buy the politicians who write the rules. A satire of NZ's housing crisis.">
     <meta property="twitter:image" content="https://chalkybones.github.io/Landlord-game/preview.png">
 
-    <link rel="stylesheet" href="style.css?v=20260728a">
+    <link rel="stylesheet" href="style.css?v=20260728b">
 </head>
 <body>
     <div class="app">
@@ -42,6 +42,12 @@
                 <button id="help-btn" class="icon-btn" title="How to play">?</button>
             </div>
         </header>
+
+        <!-- ===== LIVE NEWS TICKER ===== -->
+        <div class="ticker" id="ticker" hidden>
+            <span class="ticker-label">● LIVE</span>
+            <div class="ticker-viewport"><div class="ticker-track" id="ticker-track"></div></div>
+        </div>
 
         <!-- ===== GAME OBJECTIVE HUD ===== -->
         <div class="objective">
@@ -99,6 +105,19 @@
             <span class="ad-text"><b data-brand>EquityMate Home Loans</b><span class="ad-tagline" data-tagline>7× your income. 0× your chances.</span></span>
             <span class="ad-fine" data-fine>You will never own this home.</span>
         </div>
+
+        <!-- ===== NEMESIS: THE REPORTER'S DOSSIER ===== -->
+        <section class="dossier-strip" id="dossier-strip" hidden>
+            <div class="dossier-avatar">🕵️‍♀️</div>
+            <div class="dossier-body">
+                <div class="dossier-top">
+                    <span class="dossier-name" id="dossier-name">Fiona Vane is building a file on you</span>
+                    <span class="dossier-pct" id="dossier-pct">0%</span>
+                </div>
+                <div class="dossier-meter"><div class="dossier-fill" id="dossier-fill"></div></div>
+                <div class="dossier-chapter" id="dossier-chapter">Investigative reporter. Can't be bought. That's the problem.</div>
+            </div>
+        </section>
 
         <!-- ===== FEATURED TENANTS STRIP ===== -->
         <section class="tenants-strip panel">
@@ -192,12 +211,13 @@
         <footer class="footer">
             <div class="footer-actions">
                 <button id="save-game" class="utility-btn">💾 Save</button>
+                <button id="rapsheet-btn" class="utility-btn">🏅 Rap Sheet</button>
                 <button id="share-stats" class="utility-btn">📣 Share Empire</button>
                 <button id="prestige-btn" class="utility-btn gold" hidden>🏦 Restructure</button>
                 <button id="reset-game" class="utility-btn danger">☠ Reset</button>
             </div>
             <div class="footer-meta">
-                <span class="version">v1.3 — Election Year Edition</span>
+                <span class="version">v1.4 — Election Year Edition</span>
                 <span class="disclaimer">None of it is real. The horrors, however, are load-bearing.</span>
             </div>
         </footer>
@@ -217,6 +237,6 @@
         </div>
     </div>
 
-    <script src="game.js?v=20260728a"></script>
+    <script src="game.js?v=20260728b"></script>
 </body>
 </html>

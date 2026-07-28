@@ -452,6 +452,9 @@ function defaultState() {
         muted: false,
         evictions: 0, rentRaises: 0, violations: 0, bribes: 0,
         feesInvented: 0, fhbSales: 0, heatMaxStreak: 0, ended: false,
+        achievements: {},          // id -> true (Rap Sheet)
+        dossier: 0,                // the reporter's investigation, 0–100
+        _dossierChapter: 0,        // which escalation beat she's reached
     };
 }
 
@@ -629,6 +632,9 @@ function loadGame(){
         state.upgrades = state.upgrades || {};
         state.onceUsed = state.onceUsed || {};
         state.featured = state.featured || [];
+        state.achievements = state.achievements || {};
+        if (typeof state.dossier !== 'number') state.dossier = 0;
+        if (typeof state._dossierChapter !== 'number') state._dossierChapter = 0;
         if (!state.marketIndex) state.marketIndex = 1;
         PROPERTIES.forEach(p => {
             const st = state.properties[p.id] || (state.properties[p.id] = { count:0, cost:p.price, deBasis:0 });
@@ -1092,6 +1098,7 @@ function tenantExits(idx, title, newsText, opts){
 }
 
 function evictSomeone(){
+    dossierNudge(5);                          // evictions are exactly the story she's writing
     if (state.featured.length === 0) return;
     const idx = Math.floor(Math.random()*state.featured.length);
     const t = state.featured[idx];
@@ -1178,9 +1185,11 @@ function doPolitics(pa, e){
     if (pa.spendInfl){ state.influence -= pa.spendInfl; fx('−'+pa.spendInfl+' infl', 'neg', e); }
     if (pa.infl){ addInfluence(pa.infl, e); }
     if (pa.heat){ addHeat(pa.heat, e); }
+    if (pa.heat && pa.heat < 0) dossierNudge(pa.heat * 1.6);   // laundering/spiking sets Vane back
     if (pa.permHeatDown){ state.permHeatMult *= pa.permHeatDown; }
     if (pa.once){ state.onceUsed[pa.id] = true; }
     if (pa.id === 'bribe' || pa.id === 'donate' || pa.id === 'textMinister') state.bribes++;
+    if (pa.id === 'textMinister') unlockAch('textmin');
     blip(260);
     if (pa.ending){ addNews(pa.news(state), 'event'); refresh(); setTimeout(()=> triggerEnding(pa.ending), 500); return; }
     addNews(pa.news(state), pa.heat < 0 ? 'good' : 'event');
@@ -1190,6 +1199,7 @@ function doPolitics(pa, e){
 function addHeat(delta, e){
     if (!delta) return;
     state.heat = clamp(state.heat + delta, 0, CFG.HEAT_MAX);
+    if (delta > 0) dossierNudge(delta * 0.22);          // every bit of scrutiny feeds her file
     if (e && delta > 0) fx('+'+Math.round(delta)+' heat', 'heat', e, 34);
     if (e && delta < 0) fx(Math.round(delta)+' heat', 'infl', e, 34);
 }
@@ -1204,6 +1214,7 @@ function onWeek(){
     const m = multipliers();
     state.heat = clamp(state.heat - m.heatDecay, 0, CFG.HEAT_MAX);
     state.marketIndex *= (1 + CFG.APPRECIATION/52);   // steady appreciation
+    dossierTick();
 
     const nowS = now()/1000;
     if (nowS - (state._lastNews||0) > CFG.NEWS_COOLDOWN && Math.random() < 0.3){
@@ -1268,6 +1279,7 @@ function openDilemma(d){
             state.speed = prevSpeed; setSpeedButtons();
             closeModal();
             try { if (c.apply) c.apply(state); } catch(e){}
+            if (c.ach) unlockAch(c.ach);
             if (d.once) state.onceUsed['dil_'+d.id] = true;
             if (c.result) addNews(c.result, c.news || 'event');
             if (c.toast) toast(c.toast, c.toastCls || 'gold');
@@ -1371,7 +1383,7 @@ const DILEMMAS = [
     { id:'church', title:'A structure presents itself ⛪', minPhase:1,
       body:`<p>Your accountant, eyes shining, slides over a folder. "Register the entire portfolio," he whispers, "<b>as a religion.</b> Fully tax-exempt. Legally, a miracle."</p>`,
       choices:[
-        { label:'Praise be — go tax-free', apply:s=>{ s.rentMultBonus += 0.025; addHeat(6); },
+        { label:'Praise be — go tax-free', ach:'church', apply:s=>{ s.rentMultBonus += 0.025; addHeat(6); },
           result:`The Church of Perpetual Yield is now a registered charity. Sunday service is a rent review. The collection plate is a direct debit.`, news:'event', toast:'Blessed are the leveraged. +permanent yield.' },
         { label:'Even you have a limit', cls:'ghost',
           result:`You decline, on the grounds that it's "a bit much." A rare flicker of shame. It passes by morning, like all the others.`, news:'event' },
@@ -1387,7 +1399,7 @@ const DILEMMAS = [
     { id:'winston', title:'Winston is on the line 🐎', minPhase:2,
       body:`<p>A gravelled voice you half-recognise mentions "an opportunity — a racehorse, a syndicate, and a select-committee timetable that could go either way."</p>`,
       choices:[
-        { label:'"I\'m listening"', apply:s=>{ s.money -= 25000; addInfluence(60); },
+        { label:'"I\'m listening"', ach:'winston', apply:s=>{ s.money -= 25000; addInfluence(60); },
           result:`You now own 4% of a horse named Deductible and 100% of a minister's undivided, deniable attention. The horse has better form.`, news:'event' },
         { label:'Hang up', cls:'ghost',
           result:`You hang up. Somewhere, a phone is already dialling the next number on a very short, very expensive list.`, news:'event' },
@@ -1406,7 +1418,7 @@ const DILEMMAS = [
     { id:'rnz', title:'A reporter wants comment 🎙', minPhase:1,
       body:`<p>An RNZ journalist emails: comment on "your portfolio and its practices" by <b>5pm</b>. Attached: the mould photos, the fee schedule, and a spreadsheet with your name bolded.</p>`,
       choices:[
-        { label:'"No comment" + a lawyer\'s letter', apply:s=> addHeat(7),
+        { label:'"No comment" + a lawyer\'s letter', ach:'nocomment', apply:s=> addHeat(7),
           result:`Your lawyer's threatening letter becomes the story. It is, everyone agrees, a very good story. Streisand would understand.`, news:'bad' },
         { label:'Charm-offensive lunch ($4k)', apply:s=>{ s.money -= 4000; addHeat(-10); },
           result:`Two hours and a degustation later she "can't stand the story up — yet." You pick up the bill and the tab on her goodwill.`, news:'event' },
@@ -1430,7 +1442,7 @@ const DILEMMAS = [
     { id:'heatpump', title:'The heat pump, again ❄️',
       body:`<p>A tenant with a three-week-old baby emails for the fifth time about the dead heat pump. It is June. The forecast is "brisk." The email is very polite, which is somehow worse.</p>`,
       choices:[
-        { label:'Actually fix it ($3.5k)', cls:'ghost', apply:s=>{ s.money -= 3500; addHeat(-5); },
+        { label:'Actually fix it ($3.5k)', cls:'ghost', ach:'decent', apply:s=>{ s.money -= 3500; addHeat(-5); },
           result:`You send someone. The heat pump wheezes back to life; the baby is warm. You feel a strange, unfamiliar warmth of your own. Deeply suspicious, you have it checked. It's a conscience. It clears up.`, news:'good' },
         { label:'Invoice a "servicing surcharge"', apply:s=>{ s.money += 500; addHeat(6); s.feesInvented++; },
           result:`You bill them $500 for the reminder emails and reclassify the heat pump as "a modernist sculpture — non-operational by design."`, news:'bad' },
@@ -1438,7 +1450,7 @@ const DILEMMAS = [
     { id:'award', title:'Landlord of the Year 🏆', minPhase:1,
       body:`<p>The Property Investors' Federation would like to present you with <b>Landlord of the Year</b>. There will be a gala, a trophy, and — unavoidably — press.</p>`,
       choices:[
-        { label:'Accept the trophy', apply:s=>{ addInfluence(50); addHeat(8); },
+        { label:'Accept the trophy', ach:'award', apply:s=>{ addInfluence(50); addHeat(8); },
           result:`Your acceptance speech thanks "the tenants, without whom none of this rent would be possible." The room laughs. One waiter does not.`, news:'event' },
         { label:'Decline — too hot right now', cls:'ghost', apply:s=> addHeat(-4),
           result:`You decline quietly. Humility is the ultimate flex, and — your PR firm notes approvingly — completely free.`, news:'event' },
@@ -1446,7 +1458,7 @@ const DILEMMAS = [
     { id:'ghostflat', title:'Thirty dark windows 🌃', minPhase:2,
       body:`<p>An offshore owner offers you a management contract for <b>30 apartments they never intend to rent</b> — held empty, purely to appreciate. Easy fee. No tenants, no complaints, no people.</p>`,
       choices:[
-        { label:'Manage the empties', apply:s=>{ s.money += 15000; addHeat(4); },
+        { label:'Manage the empties', ach:'ghost', apply:s=>{ s.money += 15000; addHeat(4); },
           result:`Thirty apartments, professionally kept empty, lights on timers so they "look lived in." The housing shortage, professionally maintained.`, news:'event' },
         { label:'Pass — even for you', cls:'ghost',
           result:`You pass. Empty homes in a housing crisis is, you decide, a bad look. The fee finds someone with a better look, or none at all.`, news:'event' },
@@ -1477,6 +1489,123 @@ const DILEMMAS = [
       ]},
 ];
 
+/* ---------------------------------------------------------- RAP SHEET (achievements)
+   Threshold ones carry a `cond(state)` checked every refresh; choice/ending ones are
+   unlocked directly by `unlockAch(id)`. */
+const ACHIEVEMENTS = [
+    { id:'firstProp',   emoji:'🏚️', name:'On the Ladder',                 desc:'Buy your first property.',                         cond:()=> propertyCount()>=1 },
+    { id:'tenProps',    emoji:'🏘️', name:'Portfolio, Assembled',          desc:'Own ten properties at once.',                      cond:()=> propertyCount()>=10 },
+    { id:'block',       emoji:'🏢', name:'The Whole Building',             desc:'Own an entire apartment block.',                   cond:()=> state.properties.block.count>=1 },
+    { id:'tenbag',      emoji:'📈', name:'Ten-Bagger',                     desc:'Push net worth past $10m.',                        cond:()=> netWorth()>=1e7 },
+    { id:'leverage',    emoji:'🏦', name:'Maximum Leverage',               desc:'Carry over $5m of mortgage debt at once.',         cond:()=> state.debt>=5e6 },
+    { id:'kingmaker',   emoji:'👑', name:'Kingmaker',                      desc:'Reach the top of the influence ladder.',           cond:()=> state.lifetimeInfluence>=3000 },
+    { id:'firstEvict',  emoji:'🔑', name:'First Blood',                    desc:'Order your first eviction.',                       cond:()=> state.evictions>=1 },
+    { id:'serialEvict', emoji:'🚪', name:'Serial Evictor',                 desc:'Order ten evictions.',                             cond:()=> state.evictions>=10 },
+    { id:'fees',        emoji:'🧾', name:'Creative Accounting',            desc:'Invent ten "fees".',                               cond:()=> state.feesInvented>=10 },
+    { id:'damp',        emoji:'💧', name:"It's Not Damp, It's Character",  desc:'Ignore Healthy Homes five times.',                 cond:()=> state.violations>=5 },
+    { id:'trust',       emoji:'🏝️', name:'Offshore & Untouchable',        desc:'Move everything into the family trust.',           cond:()=> !!state.upgrades.trust },
+    { id:'survivor',    emoji:'🧯', name:'Outran the Exposé',             desc:'Take scrutiny past 95 and bring it back down.' },
+    { id:'church',      emoji:'⛪', name:'Praise Be',                      desc:'Register the portfolio as a religion.' },
+    { id:'winston',     emoji:'🐎', name:'Backed a Winner',               desc:"Accept Winston's racehorse opportunity." },
+    { id:'award',       emoji:'🏆', name:'Landlord of the Year',          desc:"Accept the Investors' Federation award." },
+    { id:'nocomment',   emoji:'📵', name:'No Comment',                     desc:"Answer a reporter with a lawyer's letter." },
+    { id:'decent',      emoji:'🫶', name:'A Rare Decent Act',             desc:'Actually fix the heat pump for the family.' },
+    { id:'ghost',       emoji:'🌃', name:'Lights On, Nobody Home',        desc:'Take on thirty deliberately-empty apartments.' },
+    { id:'textmin',     emoji:'📲', name:'Straight to the Top',           desc:'Text a minister directly.' },
+    { id:'vane',        emoji:'📰', name:'Front-Page Material',           desc:'Get published by Fiona Vane.' },
+    { id:'winMinister', emoji:'🏛️', name:'The Coronation',                desc:'Be appointed Minister of Housing.' },
+    { id:'winEmpire',   emoji:'🥂', name:'Weather System With a Mortgage', desc:'Reach a $400m empire.' },
+    { id:'winReform',   emoji:'🕊️', name:'The Reformed Landlord',        desc:'Reach the secret redemption ending.' },
+    { id:'lostExpose',  emoji:'💥', name:'Front-Page Villain',            desc:'Get taken down by the exposé.' },
+    { id:'lostCollapse',emoji:'📉', name:'Margin Called',                 desc:'Leverage yourself into oblivion.' },
+];
+function achCount(){ let n=0; ACHIEVEMENTS.forEach(a=>{ if (state.achievements[a.id]) n++; }); return n; }
+function unlockAch(id){
+    if (!id || state.achievements[id]) return;
+    const a = ACHIEVEMENTS.find(x=>x.id===id); if (!a) return;
+    state.achievements[id] = true;
+    toast(`🏅 Rap Sheet: ${a.name}`, 'gold');
+    addNews(`🏅 <b>Rap sheet updated —</b> "${a.name}": ${a.desc}`, 'event');
+    confetti(24); blip(520);
+}
+function checkAchievements(){
+    for (let i=0;i<ACHIEVEMENTS.length;i++){
+        const a = ACHIEVEMENTS[i];
+        if (a.cond && !state.achievements[a.id] && a.cond(state)) unlockAch(a.id);
+    }
+    if (state.heat >= 95) state._wasRedlined = true;
+    if (state._wasRedlined && state.heat < 55){ state._wasRedlined = false; unlockAch('survivor'); }
+}
+function modalRapSheet(){
+    const cells = ACHIEVEMENTS.map(a=>{
+        const got = !!state.achievements[a.id];
+        return `<div class="ach ${got?'got':'locked'}">
+            <div class="ach-emoji">${got?a.emoji:'🔒'}</div>
+            <div class="ach-info"><div class="ach-name">${got?a.name:'Locked'}</div><div class="ach-desc">${a.desc}</div></div>
+        </div>`;
+    }).join('');
+    showModal(`<div class="modal-kicker">Your permanent record</div><h1>The Rap Sheet 🏅</h1>
+        <p class="rap-count">${achCount()} of ${ACHIEVEMENTS.length} on file — none of it, legally, admissible; all of it, morally, damning.</p>
+        <div class="ach-grid">${cells}</div>`,
+        [{ label:'Close', cls:'primary', fn:()=> closeModal() }]);
+}
+
+/* ------------------------------------------------------- NEMESIS: the reporter's dossier
+   Fiona Vane (fictional) builds a case as you generate heat. Ignore her and she publishes —
+   a huge scrutiny hit that can trigger the exposé. Spike her story (Politics) to set her back. */
+const DOSSIER_CHAPTERS = [
+    { at:22, news:`📓 <b>Fiona Vane</b> has started calling your former tenants for a story. Several were delighted to help.`,
+      line:'She\'s working your former tenants.' },
+    { at:48, news:`📓 <b>Vane</b> now has the "administration contribution" schedule and a folder of Tribunal rulings. She\'s building something.`,
+      line:'She has the fees and the Tribunal files.' },
+    { at:72, news:`📓 <b>Vane\'s</b> editor has cleared the front page. Legal is "comfortable." You have days, not weeks.`,
+      line:'Front page cleared. Legal is comfortable.' },
+    { at:90, news:`📓 <b>Vane</b> has emailed you for comment by 5pm. There is no version of this you enjoy.`,
+      line:'She wants comment by 5pm.' },
+];
+function dossierTick(){
+    if (state.dossier >= 100){ dossierPublish(); return; }
+    // she cools off slowly once you stop feeding her (faster with a PR firm on retainer).
+    // NB: decay lives here, AFTER the publish check, so a file that hits 100 actually drops.
+    state.dossier = clamp(state.dossier - (0.4 + (state.upgrades.prFirm ? 1.2 : 0)), 0, 100);
+    let ch = 0;
+    DOSSIER_CHAPTERS.forEach((c,i)=>{ if (state.dossier >= c.at) ch = i+1; });
+    if (ch > state._dossierChapter){
+        state._dossierChapter = ch;
+        addNews(DOSSIER_CHAPTERS[ch-1].news, 'bad');
+        if (ch >= 3) shake();
+    } else if (ch < state._dossierChapter){
+        state._dossierChapter = ch;               // you cooled her off
+    }
+}
+function dossierPublish(){
+    state.dossier = 0; state._dossierChapter = 0; state._vanePublished = true;
+    addNews(`💥 <b>THE FRONT PAGE:</b> Fiona Vane's investigation drops across every outlet at once — "The Landlord Who Wrote The Rules." The mould, the fees, the evictions, your name in 48-point type. Scrutiny detonates.`, 'bad');
+    toast('💥 Vane published. This is what she was building.', 'bad');
+    unlockAch('vane');
+    shake();
+    addHeat(34);
+}
+function dossierNudge(delta){ state.dossier = clamp(state.dossier + delta, 0, 100); }
+
+/* ------------------------------------------------------------------ LIVE TICKER */
+let _tickerItems = [], _lastTickerRender = 0;
+function _stripHtml(s){ const d = document.createElement('div'); d.innerHTML = s; return (d.textContent || '').replace(/\s+/g,' ').trim(); }
+function pushTicker(text){
+    const t = _stripHtml(text); if (!t) return;
+    _tickerItems.unshift(t);
+    if (_tickerItems.length > 12) _tickerItems.pop();
+    if (now() - _lastTickerRender > 2500){ _lastTickerRender = now(); renderTicker(); }
+}
+function renderTicker(){
+    const wrap = $('ticker'), track = $('ticker-track'); if (!wrap || !track) return;
+    if (!_tickerItems.length){ wrap.hidden = true; return; }
+    wrap.hidden = false;
+    const seq = _tickerItems.map(t=>`<span class="ticker-item">${t}</span>`).join('<span class="ticker-sep">◆</span>');
+    track.innerHTML = seq + '<span class="ticker-sep">◆</span>' + seq + '<span class="ticker-sep">◆</span>';
+    track.style.animationDuration = Math.max(34, _tickerItems.length * 7) + 's';
+}
+
 /* =============================================================== ENDINGS */
 function checkPassiveEndings(){
     if (state.ended) return;
@@ -1493,6 +1622,7 @@ function triggerEnding(kind){
     if (state.ended) return;
     state.ended = true; state.endingKind = kind; state.speed = 0; setSpeedButtons();
     _dilemmaOpen = false;
+    unlockAch({ minister:'winMinister', empire:'winEmpire', reform:'winReform', expose:'lostExpose', collapse:'lostCollapse' }[kind]);
     if (kind === 'expose' || kind === 'collapse') shake();
     showEndingModal(kind);
     if (kind === 'empire' || kind === 'minister' || kind === 'reform'){
@@ -1510,6 +1640,8 @@ function showEndingModal(kind){
             <div>Mortgage debt<b>${money(state.debt)}</b></div>
             <div>Evictions ordered<b>${state.evictions}</b></div>
             <div>Healthy Homes ignored<b>${state.violations}</b></div>
+            <div>Fees invented<b>${state.feesInvented}</b></div>
+            <div>🏅 Rap Sheet<b>${achCount()}/${ACHIEVEMENTS.length}</b></div>
         </div>`;
 
     const E = {
@@ -1521,7 +1653,7 @@ function showEndingModal(kind){
             body:`<p>Net worth past four hundred million, most of it borrowed into being. You own so much of Aotearoa that "landlord" undersells it — you're a weather system with a mortgage.</p>
                   <p>The bank lent you 7× an income you barely earn, against rent you barely justify, to buy homes a first-home buyer will never be advanced 6× for. You won capitalism on margin. The prize is that everyone else lost, and pays you monthly — right up until they board the Brisbane flight.</p>` },
         expose: { kicker:'Ending — The Reckoning', title:'The Exposé 💥',
-            body:`<p>You couldn't buy the silence fast enough. RNZ, Stuff and The Spinoff dropped it the same morning: the mould, the fees, the pregnant tenant, the rat droppings, the boat named "Yield."</p>
+            body:`<p>You couldn't buy the silence fast enough. <b>Fiona Vane's</b> investigation dropped across RNZ, Stuff and The Spinoff the same morning — the mould, the fees, the pregnant tenant, the rat droppings, the boat named "Yield." She never did return your lawyer's calls.</p>
                   <p>With <b>${state.evictions} evictions</b> and <b>${state.violations} ignored standards</b> on the record and not enough influence to make it vanish, the Tribunal moved, the banks called the loans, and the leverage that built you took you apart. Turns out the immunity was rented too. You missed a payment.</p>` },
         collapse: { kicker:'Ending — Margin Call', title:'The Market Correction 📉',
             body:`<p>You leveraged into the sky and the sky sent a bill. The RBNZ, having cut rates six times, hiked them the moment petrol flinched; your interest-only bombs came due; the "recovery" everyone promised in 2026 turned out to be a landing with the wheels up.</p>
@@ -1554,10 +1686,12 @@ function doPrestige(){
         { label:'Not yet', cls:'ghost', fn:()=> closeModal() },
         { label:'Restructure', cls:'gold', fn:()=>{
             const keep = { upgrades: state.upgrades, legacy: state.legacy+1, influence: Math.floor(state.influence/2),
-                           lifetime: state.lifetimeInfluence, muted: state.muted, buyQty: state.buyQty };
+                           lifetime: state.lifetimeInfluence, muted: state.muted, buyQty: state.buyQty,
+                           achievements: state.achievements };
             state = defaultState();
             state.upgrades = keep.upgrades; state.legacy = keep.legacy; state.influence = keep.influence;
             state.lifetimeInfluence = keep.lifetime; state.muted = keep.muted; state.buyQty = keep.buyQty;
+            state.achievements = keep.achievements;
             state._phaseSeen = 0; state._unlockedSeen = unlockedTierCount();
             _leaving = {};
             syncTenants(); buildAll(); closeModal();
@@ -1576,6 +1710,7 @@ function addNews(text, kind){
     item.innerHTML = `<span class="stamp">${stamp}</span>${text}`;
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > 24) feed.removeChild(feed.lastChild);
+    pushTicker(text);
     const newsTab = document.querySelector('.tab[data-tab="news"]');
     if (newsTab && !newsTab.classList.contains('active')){
         state._unread = (state._unread||0) + 1;
@@ -1738,6 +1873,7 @@ Rap sheet:
 • Healthy Homes ignored: ${state.violations}
 • Fees invented: ${state.feesInvented}
 • Politicians "engaged": ${state.bribes}
+• 🏅 Trophies: ${achCount()}/${ACHIEVEMENTS.length}
 
 A satire of NZ's housing crisis. How dirty are your hands?
 Play: https://chalkybones.github.io/Landlord-game/`;
@@ -1829,9 +1965,25 @@ function refresh(){
         if (rateEl) rateEl.textContent = `Mortgage rate ${(state.rate*100).toFixed(2)}% · you owe ${money(state.debt)}`;
     }
 
+    // nemesis dossier strip
+    const dstrip = $('dossier-strip');
+    if (dstrip){
+        const active = state.dossier > 0.5 || state._dossierChapter > 0;
+        dstrip.hidden = !active;
+        if (active){
+            $('dossier-pct').textContent = Math.round(state.dossier) + '%';
+            $('dossier-fill').style.width = clamp(state.dossier,0,100) + '%';
+            const lines = ['Investigative reporter. Can\'t be bought. That\'s the problem.',
+                DOSSIER_CHAPTERS[0].line, DOSSIER_CHAPTERS[1].line, DOSSIER_CHAPTERS[2].line, DOSSIER_CHAPTERS[3].line];
+            $('dossier-chapter').textContent = lines[state._dossierChapter] || lines[0];
+            dstrip.classList.toggle('hot', state.dossier >= 72);
+        }
+    }
+
     for (let i=0;i<updaters.length;i++) updaters[i]();
     updateTenantStrain();
     updatePrestigeButton();
+    checkAchievements();
 }
 
 /* =============================================================== LOOP */
@@ -1872,6 +2024,7 @@ function setupEvents(){
     document.querySelectorAll('.speed-btn').forEach(b=> b.addEventListener('click', ()=> setSpeed(parseInt(b.dataset.speed))));
     document.querySelectorAll('.qty-btn').forEach(b=> b.addEventListener('click', ()=> setBuyQty(b.dataset.qty === 'max' ? 'max' : parseInt(b.dataset.qty))));
     $('save-game').addEventListener('click', ()=> saveGame(false));
+    const rap = $('rapsheet-btn'); if (rap) rap.addEventListener('click', modalRapSheet);
     $('share-stats').addEventListener('click', shareStats);
     $('reset-game').addEventListener('click', resetGame);
     $('prestige-btn').addEventListener('click', doPrestige);
@@ -1890,6 +2043,9 @@ function init(){
     syncTenants();
     if (had) offlineProgress();
     buildAll();
+    // seed the live ticker so it scrolls from the first frame
+    for (let i=0;i<5;i++){ const h = _stripHtml(pickHeadline()); if (_tickerItems.indexOf(h) === -1) _tickerItems.push(h); }
+    renderTicker();
     setupEvents();
     setSpeedButtons();
     setBuyQty(state.buyQty || 1);
