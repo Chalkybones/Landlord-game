@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newstalk Landlord — voice test</title>
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{--teal:#00858E;--teal-ink:#063b3e;--teal-dark:#044f54;--gold:#E0A500;--gold-dark:#b98600;
+        --red:#D64545;--coral:#ef6a4d;--ink:#17242b;--muted:#7c8d94;--line:#e2eaec}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+       background:radial-gradient(1000px 500px at 100% -10%,rgba(23,162,162,.14),transparent 60%),
+                  radial-gradient(800px 460px at -10% 110%,rgba(224,165,0,.10),transparent 55%),#eef3f4;
+       color:var(--ink);line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased;padding:20px 16px 60px}
+  .wrap{max-width:600px;margin:0 auto}
+  .radio{background:linear-gradient(150deg,var(--teal-ink),var(--teal-dark));color:#fff;border-radius:20px;
+         padding:22px 22px 26px;box-shadow:0 12px 40px rgba(6,59,62,.28);position:relative;overflow:hidden}
+  .radio::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,transparent 2px 4px)}
+  .brandrow{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+  .dial{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.13);display:grid;place-items:center;font-size:26px;
+        border:1px solid rgba(255,255,255,.2)}
+  .station{font-weight:800;font-size:1.4em;letter-spacing:-.02em}
+  .freq{font-size:.72em;opacity:.62;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+  .tag{font-size:.9em;opacity:.8;margin:6px 0 18px}
+  /* on-air panel */
+  .onair{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px;min-height:132px;
+         display:flex;flex-direction:column;gap:8px}
+  .onair-top{display:flex;align-items:center;gap:8px}
+  .live-dot{width:9px;height:9px;border-radius:50%;background:#ff5a4d;box-shadow:0 0 10px #ff5a4d;animation:pulse 1.2s infinite}
+  .onair.idle .live-dot{background:#6b8b8e;box-shadow:none;animation:none}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+  .speaker{font-weight:800;font-size:.82em;letter-spacing:.08em;text-transform:uppercase;color:#ffd77a}
+  .caption{font-size:1.06em;line-height:1.4;min-height:2.4em}
+  .caption .who{color:#7fe0d6;font-weight:700}
+  /* eq bars */
+  .eq{display:flex;gap:3px;align-items:flex-end;height:20px;margin-left:auto}
+  .eq i{width:3px;background:#5fe0d6;border-radius:2px;height:4px}
+  .onair.playing .eq i{animation:bounce .6s ease-in-out infinite}
+  .eq i:nth-child(2){animation-delay:.12s}.eq i:nth-child(3){animation-delay:.24s}
+  .eq i:nth-child(4){animation-delay:.06s}.eq i:nth-child(5){animation-delay:.18s}
+  @keyframes bounce{0%,100%{height:4px}50%{height:18px}}
+  /* controls */
+  .btnrow{display:flex;gap:10px;margin-top:18px}
+  .btn{flex:1;padding:15px;border:none;border-radius:12px;font-size:1em;font-weight:800;cursor:pointer;transition:.15s}
+  .btn.tune{background:var(--gold);color:#3a2b00}
+  .btn.tune:hover{background:#f2b71a}
+  .btn.stop{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.24)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .opts{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+  .opt{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.9em}
+  .opt label{opacity:.85;font-weight:600}
+  select{flex:1;max-width:62%;padding:8px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.2);
+         background:rgba(255,255,255,.1);color:#fff;font-size:.9em}
+  select option{color:#111}
+  .switch{position:relative;width:46px;height:26px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:rgba(255,255,255,.2);border-radius:20px;transition:.2s;cursor:pointer}
+  .slider::before{content:'';position:absolute;height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  .switch input:checked+.slider{background:var(--gold)}
+  .switch input:checked+.slider::before{transform:translateX(20px)}
+  /* voice sampler */
+  .cast{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}
+  .cast h2{font-size:1em;margin-bottom:4px}
+  .cast p{font-size:.84em;color:var(--muted);margin-bottom:12px}
+  .voices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .vbtn{padding:11px 10px;border:1px solid var(--line);background:#f7fafa;border-radius:10px;cursor:pointer;text-align:left;transition:.12s}
+  .vbtn:hover{border-color:var(--teal);background:#eef7f7}
+  .vbtn b{display:block;font-size:.86em}.vbtn span{font-size:.74em;color:var(--muted)}
+  .note{margin-top:20px;font-size:.82em;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .note b{color:var(--ink)}
+  .warn{background:#fff4f0;border-color:#f6ccbf;color:#8f3b23}
+  h1.title{font-size:1.05em;font-weight:800;color:var(--teal-dark);margin:0 0 4px;letter-spacing:.02em}
+  .sub{font-size:.85em;color:var(--muted);margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="title">📻 Voice test — the browser-speech talkback idea</h1>
+  <div class="sub">This is your device's built-in voice, live. Nothing pre-recorded. Hit <b>Tune in</b> and judge how robotic it is on <i>your</i> phone.</div>
+
+  <div class="radio">
+    <div class="brandrow">
+      <div class="dial">📻</div>
+      <div>
+        <div class="station">Newstalk Landlord</div>
+        <div class="freq">PortfolioMax FM · 10·80 AM</div>
+      </div>
+    </div>
+    <div class="tag">"Where the rent's gone up and so have the takes."</div>
+
+    <div class="onair idle" id="onair">
+      <div class="onair-top">
+        <span class="live-dot"></span>
+        <span class="speaker" id="speaker">OFF AIR</span>
+        <div class="eq"><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="caption" id="caption">Press “Tune in” to start the show.</div>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn tune" id="tuneBtn">▶ Tune in</button>
+      <button class="btn stop" id="stopBtn" disabled>■ Stop</button>
+    </div>
+
+    <div class="opts">
+      <div class="opt">
+        <label for="voicePick">Base voice</label>
+        <select id="voicePick"><option>Loading voices…</option></select>
+      </div>
+      <div class="opt">
+        <label for="crunch">📻 AM radio crunch (static bed)</label>
+        <span class="switch"><input type="checkbox" id="crunch" checked><span class="slider"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cast">
+    <h2>Meet the callers</h2>
+    <p>Each is the same engine at a different pitch &amp; speed — tap to hear one line. In the real game these fire based on what you just did (evict someone → an angry caller rings in).</p>
+    <div class="voices" id="voices"></div>
+  </div>
+
+  <div class="note" id="note">
+    <b>What you're hearing:</b> the Web Speech API built into your browser — free, no downloads, and it reads live text, so talkback could react to your actual game forever. Quality is set by your device: modern iPhone/Mac (Siri voices) and Chrome/Edge sound good; older Androids can get properly robotic. There's no guaranteed NZ accent (Aussie's the closest) and it fudges te reo unless spelled out. The AM-crunch toggle lays static under the voice so the synthetic edge reads as “lo-fi radio” on purpose.
+  </div>
+</div>
+
+<script>
+(function(){
+  const SS = window.speechSynthesis;
+  const note = document.getElementById('note');
+  if (!SS || typeof SpeechSynthesisUtterance === 'undefined'){
+    note.className = 'note warn';
+    note.innerHTML = '<b>Your browser has no speech engine.</b> This feature relies on the built-in Web Speech API, which this browser doesn’t expose. Try Chrome, Safari, or Edge.';
+    document.getElementById('tuneBtn').disabled = true;
+    return;
+  }
+
+  /* ---------- voices ---------- */
+  let voices = [], baseVoice = null;
+  const pick = document.getElementById('voicePick');
+  function scoreVoice(v){
+    let s = 0; const n = (v.name||'').toLowerCase(), l = (v.lang||'').toLowerCase();
+    if (l.startsWith('en-nz')) s += 60; else if (l.startsWith('en-au')) s += 45;
+    else if (l.startsWith('en-gb')) s += 35; else if (l.startsWith('en')) s += 20;
+    if (/siri/.test(n)) s += 40;
+    if (/natural|neural|premium|enhanced/.test(n)) s += 35;
+    if (/google/.test(n)) s += 25;
+    if (v.localService === false) s += 6;  // cloud voices tend to be nicer
+    return s;
+  }
+  function loadVoices(){
+    const all = SS.getVoices();
+    if (!all.length) return;
+    voices = all.filter(v => (v.lang||'').toLowerCase().startsWith('en'));
+    if (!voices.length) voices = all.slice();
+    voices.sort((a,b)=> scoreVoice(b)-scoreVoice(a));
+    baseVoice = voices[0];
+    pick.innerHTML = '';
+    voices.forEach((v,i)=>{
+      const o = document.createElement('option');
+      o.value = i; o.textContent = v.name + '  ·  ' + v.lang + (v.localService===false?'  ✦':'');
+      pick.appendChild(o);
+    });
+    buildCast();
+  }
+  pick.addEventListener('change', ()=>{ baseVoice = voices[pick.value] || baseVoice; });
+
+  /* ---------- radio static bed (Web Audio) ---------- */
+  let actx = null, bedGain = null, bedNodes = [];
+  function ensureCtx(){ if (!actx){ try { actx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} } return actx; }
+  function startBed(){
+    if (!document.getElementById('crunch').checked) return;
+    const ctx = ensureCtx(); if (!ctx) return;
+    stopBed();
+    // pink-ish noise buffer
+    const buf = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
+    const d = buf.getChannelData(0); let last = 0;
+    for (let i=0;i<d.length;i++){ const w = Math.random()*2-1; last = (last + 0.02*w)/1.02; d[i] = last*3.2; }
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1400; bp.Q.value=0.7;
+    const hum = ctx.createOscillator(); hum.type='sine'; hum.frequency.value=60;
+    const humG = ctx.createGain(); humG.gain.value=0.008;
+    bedGain = ctx.createGain(); bedGain.gain.value=0.05;
+    src.connect(bp); bp.connect(bedGain); hum.connect(humG); humG.connect(bedGain);
+    bedGain.connect(ctx.destination);
+    src.start(); hum.start();
+    bedNodes = [src, hum];
+  }
+  function stopBed(){ bedNodes.forEach(n=>{ try{n.stop()}catch(e){} }); bedNodes=[]; }
+  function sting(){  // a quick burst of louder static between segments
+    if (!document.getElementById('crunch').checked) return;
+    const ctx = ensureCtx(); if (!ctx) return;
+    const buf = ctx.createBuffer(1, ctx.sampleRate*0.35, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.max(0,1-i/d.length);
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1800; bp.Q.value=0.5;
+    const g=ctx.createGain(); g.gain.value=0.18;
+    src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start();
+  }
+
+  /* ---------- characters ---------- */
+  // pitch/rate shape each "person"; voiceIdx picks a distinct system voice if available
+  const CAST = {
+    dj:      { name:'Macka (host)',        pitch:0.85, rate:0.98, vi:0 },
+    news:    { name:'Newsreader',          pitch:1.0,  rate:1.02, vi:1 },
+    baz:     { name:'Baz from Papakura',   pitch:1.18, rate:1.13, vi:2 },
+    geoff:   { name:'Geoff, Remuera',      pitch:0.92, rate:0.95, vi:3 },
+    val:     { name:'Val (caller)',        pitch:1.12, rate:0.9,  vi:4 },
+    ad:      { name:'Sponsor',             pitch:1.05, rate:1.12, vi:1 },
+  };
+  function voiceFor(c){
+    if (!voices.length) return baseVoice;
+    // spread characters across available voices, anchored on the chosen base
+    const start = Math.max(0, voices.indexOf(baseVoice));
+    return voices[(start + c.vi) % voices.length] || baseVoice;
+  }
+
+  const onair = document.getElementById('onair');
+  const speakerEl = document.getElementById('speaker');
+  const captionEl = document.getElementById('caption');
+
+  function say(who, text, onend){
+    const c = CAST[who];
+    const u = new SpeechSynthesisUtterance(text);
+    const v = voiceFor(c); if (v) u.voice = v;
+    u.pitch = c.pitch; u.rate = c.rate;
+    u.onstart = ()=>{ speakerEl.textContent = c.name; captionEl.innerHTML = '<span class="who">“</span>'+text+'<span class="who">”</span>'; onair.classList.add('playing'); };
+    u.onend = ()=>{ onair.classList.remove('playing'); onend && onend(); };
+    u.onerror = ()=>{ onair.classList.remove('playing'); onend && onend(); };
+    SS.speak(u);
+  }
+
+  /* ---------- the demo show ---------- */
+  const SHOW = [
+    ['dj',   "Nine-oh-eight on Newstalk Landlord, PortfolioMax F-M. The station where the rent's gone up and so has your blood pressure. Lines are open."],
+    ['news', "Top of the news: national rents fall for a second month — somehow, not at any property owned by tonight's caller."],
+    ['dj',   "Let's get to the phones. Baz in Papakura, you're on."],
+    ['baz',  "Yeah gidday Macka. This bloke — he's put a ninety-day notice on a nurse. A nurse! No reason given! And he's up for Landlord of the Year?!"],
+    ['dj',   "Strong stuff. Geoff in Remuera, you see it differently."],
+    ['geoff',"Look Macka, nobody's forcing anyone to rent. He's providing a service. A bit of mould builds character. Honestly, he's a job creator."],
+    ['dj',   "Val, you've been holding. Go ahead, love."],
+    ['val',  "I just think, if you've got seven houses dear, maybe that family in the paper could have one of them. That's all. I'll hang up and listen."],
+    ['dj',   "And we're back, after this."],
+    ['ad',   "EquityMate Home Loans. Seven times your income, zero times your chances. Fees apply. So does gravity."],
+    ['dj',   "That's your lot. Remember — it's not a housing crisis, it's a portfolio opportunity. Macka, signing off."],
+  ];
+
+  let running = false, idx = 0;
+  const tuneBtn = document.getElementById('tuneBtn');
+  const stopBtn = document.getElementById('stopBtn');
+
+  function finish(){
+    running = false; stopBed();
+    onair.classList.remove('playing'); onair.classList.add('idle');
+    speakerEl.textContent = 'OFF AIR'; captionEl.textContent = "That's the show. Tune in again?";
+    tuneBtn.disabled = false; stopBtn.disabled = true; tuneBtn.textContent = '▶ Tune in again';
+  }
+  function step(){
+    if (!running) return;
+    if (idx >= SHOW.length){ finish(); return; }
+    const [who, text] = SHOW[idx++];
+    const prev = idx>1 ? SHOW[idx-2][0] : null;
+    // static sting when we switch to/from a caller
+    const isCaller = who==='baz'||who==='geoff'||who==='val';
+    if (isCaller || prev==='baz'||prev==='geoff'||prev==='val') sting();
+    say(who, text, ()=> setTimeout(step, 180));
+  }
+  tuneBtn.addEventListener('click', ()=>{
+    SS.cancel();
+    running = true; idx = 0;
+    onair.classList.remove('idle');
+    tuneBtn.disabled = true; stopBtn.disabled = false;
+    ensureCtx(); if (actx && actx.state==='suspended') actx.resume();
+    startBed();
+    sting();
+    setTimeout(step, 350);
+  });
+  stopBtn.addEventListener('click', ()=>{ running=false; SS.cancel(); finish(); });
+  document.getElementById('crunch').addEventListener('change', e=>{ if (running){ if (e.target.checked) startBed(); else stopBed(); } });
+
+  /* ---------- voice sampler ---------- */
+  const SAMPLES = {
+    dj:   "You're listening to Newstalk Landlord. Don't touch that dial — you can't afford the dial.",
+    baz:  "It's a rort, Macka! An absolute rort! I'm not angry, I'm just — no, I am angry!",
+    geoff:"The market has spoken, and the market says: pay me. It's really very simple.",
+    val:  "Back in my day a house cost three of your salaries. Now it costs a kidney and a prayer.",
+    news: "Breaking: the median house price has quietly bought a second house.",
+    ad:   "Brisbane Departures. Same rent, wages that aren't a dare. Window seat?",
+  };
+  function buildCast(){
+    const wrap = document.getElementById('voices'); if (!wrap) return;
+    wrap.innerHTML='';
+    Object.keys(SAMPLES).forEach(k=>{
+      const b = document.createElement('button'); b.className='vbtn';
+      b.innerHTML = '<b>'+CAST[k].name+'</b><span>tap to hear</span>';
+      b.addEventListener('click', ()=>{
+        if (running) return;
+        SS.cancel(); ensureCtx(); if (actx&&actx.state==='suspended') actx.resume();
+        onair.classList.remove('idle');
+        say(k, SAMPLES[k], ()=>{ if(!running){ onair.classList.add('idle'); speakerEl.textContent='OFF AIR'; } });
+      });
+      wrap.appendChild(b);
+    });
+  }
+
+  /* kick off voice loading LAST, once CAST / SAMPLES / buildCast all exist */
+  SS.onvoiceschanged = loadVoices;
+  loadVoices();
+  setTimeout(loadVoices, 250);   // some browsers populate the list late
+})();
+</script>
+</body>
+</html>
