@@ -686,6 +686,66 @@ function offlineProgress(){
 /* =============================================================== RENDERING */
 const updaters = [];
 
+/* ---- illustrated property art (style ②): little night-lit buildings drawn per
+   asset type, so every property reads as a place, not a spreadsheet row ---- */
+const ART_STYLE = { studio:'tower', doup:'cottage', exState:'state', leaky:'flats',
+                    auck:'house', townhouse:'townrow', prestige:'mansion', block:'apartment' };
+function winGrid(x, y, w, h, cols, rows, gap){
+    const cw = (w - gap*(cols+1))/cols, ch = (h - gap*(rows+1))/rows; let s = '';
+    for (let r=0;r<rows;r++) for (let c=0;c<cols;c++){
+        const lit = ((c*3 + r*5 + cols) % 7) > 1;   // most windows warm, a few dark
+        s += `<rect x="${(x+gap+c*(cw+gap)).toFixed(1)}" y="${(y+gap+r*(ch+gap)).toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" rx="1" fill="${lit?'var(--win)':'var(--win-dim)'}"/>`;
+    }
+    return s;
+}
+function houseArt(id){
+    const st = ART_STYLE[id] || 'house';
+    const A = {
+      tower:`<rect x="78" y="8" width="44" height="104" fill="#25474f"/><rect x="78" y="8" width="8" height="104" fill="#2d555d"/>${winGrid(88,16,26,90,2,7,4)}`,
+      cottage:`<polygon points="60,60 100,32 140,60" fill="#3a2a20"/><polygon points="66,60 100,37 134,60" fill="#4a3628"/><rect x="68" y="60" width="64" height="52" fill="#2a4a44"/>${winGrid(78,70,20,18,1,1,0)}<rect x="106" y="80" width="16" height="32" fill="#123028"/>`,
+      state:`<polygon points="46,54 78,30 122,30 154,54" fill="#3c2b22"/><polygon points="53,54 80,34 120,34 147,54" fill="#4d382a"/><rect x="50" y="54" width="100" height="58" fill="#2c544d"/>${winGrid(60,64,26,24,1,1,0)}${winGrid(116,64,26,24,1,1,0)}<rect x="92" y="80" width="18" height="32" fill="#123028"/>`,
+      flats:`<rect x="44" y="30" width="112" height="82" fill="#264b52"/><rect x="44" y="30" width="112" height="6" fill="#2f5a62"/>${winGrid(52,40,96,64,4,3,5)}`,
+      house:`<polygon points="52,58 100,30 148,58" fill="#33261d"/><rect x="60" y="58" width="80" height="54" fill="#2a4a44"/>${winGrid(70,68,20,18,1,1,0)}${winGrid(112,68,20,18,1,1,0)}<rect x="92" y="84" width="18" height="28" fill="#123028"/>`,
+      townrow:`${[0,1,2,3].map(i=>`<rect x="${36+i*32}" y="34" width="32" height="78" fill="${i%2?'#264b52':'#22454d'}"/><polygon points="${36+i*32},34 ${52+i*32},22 ${68+i*32},34" fill="#33261d"/>`).join('')}${winGrid(42,46,116,44,4,2,6)}`,
+      mansion:`<polygon points="40,50 100,24 160,50" fill="#33261d"/><rect x="48" y="50" width="104" height="62" fill="#2c544d"/><rect x="60" y="66" width="12" height="46" fill="#1c3c38"/><rect x="128" y="66" width="12" height="46" fill="#1c3c38"/>${winGrid(80,62,40,40,2,2,6)}<rect x="92" y="86" width="18" height="26" fill="#123028"/>`,
+      apartment:`<rect x="30" y="14" width="140" height="98" fill="#22454d"/><rect x="30" y="14" width="140" height="7" fill="#2b5560"/>${winGrid(40,26,120,78,7,5,5)}`,
+    };
+    return `<svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMax meet" class="house-svg">`
+         + `<rect x="0" y="111" width="200" height="9" fill="#081b1f"/>${A[st]||A.house}</svg>`;
+}
+
+/* ---- expressive tenant faces (style ③): a drawn face that changes with how
+   close the household is to being priced out ---- */
+const HAIR = {
+    short:'M17,44 Q18,18 44,18 Q70,18 71,44 Q64,30 44,30 Q24,30 17,44',
+    bun:'M18,44 Q18,17 44,17 Q70,17 70,44 Q66,28 44,28 Q22,28 18,44 M44,12 a7,7 0 1,0 .1,0',
+    bald:'M22,40 Q24,22 44,22 Q64,22 66,40 Q60,32 44,32 Q28,32 22,40',
+    curly:'M16,46 Q12,20 44,16 Q76,20 72,46 Q72,30 60,28 Q66,22 52,22 Q56,16 44,20 Q32,16 36,22 Q22,22 28,28 Q16,30 16,46',
+};
+const SKINS = ['#e8b48f','#d8a982','#c58a52','#a9703f','#8a5a34','#7f5230','#ecc6a6','#b57b48'];
+const HAIRCOLS = ['#4a2f1c','#17120e','#141010','#2a1a12','#c9cdd0','#8f9195','#3a2416'];
+const HAIRS = [HAIR.short, HAIR.bun, HAIR.bald, HAIR.curly];
+function tenantMoodColor(s){ return s>=74?'var(--red)':s>=45?'var(--gold)':'var(--green)'; }
+function ensureFace(t){
+    if (!t) return;
+    if (!t.skin)    t.skin    = pick(SKINS);
+    if (!t.hair)    t.hair    = pick(HAIRS);
+    if (!t.hairCol) t.hairCol = pick(HAIRCOLS);
+}
+function faceSVG(t){
+    ensureFace(t);
+    const s = t.strain, mood = s>=74?'breaking':s>=45?'strained':'ok';
+    const mouth = mood==='ok' ? 'M32,58 Q44,67 56,58' : mood==='strained' ? 'M33,60 Q44,60 55,60' : 'M33,63 Q44,55 55,63';
+    const browL = mood==='breaking' ? 'M28,40 L40,45' : mood==='strained' ? 'M28,42 L40,41' : 'M29,41 L40,40';
+    const browR = mood==='breaking' ? 'M60,40 L48,45' : mood==='strained' ? 'M60,42 L48,41' : 'M59,41 L48,40';
+    const tear = mood==='breaking' ? '<circle cx="34" cy="53" r="2.3" fill="#7fd0ff"/><circle cx="54" cy="53" r="2.3" fill="#7fd0ff"/>' : '';
+    return `<svg viewBox="0 0 88 88" class="face-svg"><circle cx="44" cy="46" r="27" fill="${t.skin}"/>`
+         + `<path d="${t.hair}" fill="${t.hairCol}"/><circle cx="35" cy="47" r="3" fill="#20130e"/><circle cx="53" cy="47" r="3" fill="#20130e"/>`
+         + `<path d="${browL}" stroke="#20130e" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+         + `<path d="${browR}" stroke="#20130e" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+         + `<path d="${mouth}" stroke="#5a2c26" stroke-width="2.6" fill="none" stroke-linecap="round"/>${tear}</svg>`;
+}
+
 function buildAll(){
     updaters.length = 0;
     buildProperties();
@@ -701,21 +761,28 @@ function buildProperties(){
     list.innerHTML = '';
     PROPERTIES.forEach(p=>{
         const card = document.createElement('div');
-        card.className = 'buy-card';
+        card.className = 'buy-card tile-card';
         card.innerHTML = `
-            <div class="buy-card-head">
-                <span class="buy-title"><span class="buy-emoji">${p.emoji}</span> ${p.name}${p.newBuild?' <span class="nb-badge">NEW BUILD</span>':''}</span>
-                <span class="buy-count" data-count>Owned 0</span>
+            <div class="tile-art">
+                <div class="tile-moon"></div>
+                ${houseArt(p.id)}
+                ${p.newBuild?'<span class="tile-nb">NEW BUILD</span>':''}
+                <span class="tile-owned" data-count>Owned 0</span>
             </div>
-            <div class="buy-desc">${p.desc}</div>
-            <div class="buy-stats">
-                <span>Price <b data-price></b></span>
-                <span>Deposit <b data-dep></b></span>
-                <span>Net <b data-net></b>/wk</span>
-                <span>+<b>${p.units}</b> hh</span>
-            </div>
-            <div class="lock-note" data-lock hidden></div>
-            <button class="buy-btn" data-buy>Buy</button>`;
+            <div class="tile-body">
+                <div class="buy-card-head">
+                    <span class="buy-title"><span class="buy-emoji">${p.emoji}</span> ${p.name}</span>
+                </div>
+                <div class="buy-desc">${p.desc}</div>
+                <div class="buy-stats">
+                    <span>Price <b data-price></b></span>
+                    <span>Deposit <b data-dep></b></span>
+                    <span>Net <b data-net></b>/wk</span>
+                    <span>+<b>${p.units}</b> hh</span>
+                </div>
+                <div class="lock-note" data-lock hidden></div>
+                <button class="buy-btn" data-buy>Buy</button>
+            </div>`;
         list.appendChild(card);
         const btn = card.querySelector('[data-buy]');
         btn.addEventListener('click', (e)=> buyProperty(p.id, e));
@@ -724,7 +791,8 @@ function buildProperties(){
             const st = state.properties[p.id];
             const unlocked = propertyCount() >= p.unlock;
             card.classList.toggle('locked', !unlocked);
-            card.querySelector('[data-count]').textContent = 'Owned ' + st.count;
+            card.classList.toggle('has-owned', st.count > 0);
+            card.querySelector('[data-count]').textContent = st.count > 0 ? 'Owned ×' + st.count : 'On the market';
             card.querySelector('[data-price]').textContent = money(st.cost);
             card.querySelector('[data-dep]').textContent = money(Math.floor(st.cost * p.deposit));
             const net = unitNet(p);
@@ -904,7 +972,8 @@ function makeTenant(){
     const used = (state.featured||[]).map(t=>t && t.situation);
     let sit, tries = 0;
     do { sit = pick(T_SITUATION); tries++; } while (used.indexOf(sit) !== -1 && tries < 12);
-    return { name, job:pick(T_JOB), rent, strain: 12 + Math.floor(Math.random()*16), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳','👴']) };
+    return { name, job:pick(T_JOB), rent, strain: 12 + Math.floor(Math.random()*16), situation: sit,
+             skin: pick(SKINS), hair: pick(HAIRS), hairCol: pick(HAIRCOLS) };
 }
 function syncTenants(){
     state.tenants = baseTenants();
@@ -925,9 +994,10 @@ function renderTenants(){
     state.featured.forEach((t, idx)=>{
         const card = document.createElement('div');
         card.className = 'tenant-card';
+        ensureFace(t);
         card.innerHTML = `
             <div class="tenant-top">
-                <div class="tenant-avatar">${t.emoji}</div>
+                <div class="tenant-avatar" data-avatar style="--mood:${tenantMoodColor(t.strain)}">${faceSVG(t)}</div>
                 <div>
                     <div class="tenant-name">${t.name}</div>
                     <div class="tenant-job">${t.job}</div>
@@ -961,6 +1031,8 @@ function updateTenantStrain(){
         if (bar) bar.style.width = clamp(t.strain,0,100) + '%';
         const lbl = c.querySelector('[data-strainlabel]');
         if (lbl) lbl.textContent = strainWord(t.strain);
+        const av = c.querySelector('[data-avatar]');
+        if (av){ const col = tenantMoodColor(t.strain); if (av.dataset.mood !== col){ av.dataset.mood = col; av.style.setProperty('--mood', col); av.innerHTML = faceSVG(t); } }
         const btn = c.querySelector('[data-squeeze]');
         if (btn){
             const near = t.strain >= 74;
@@ -2063,7 +2135,7 @@ function coachStep(){
     if (props === 0)
         return { text:"Buy your first rental below — it's your income, and the borrowing power to buy the next one. 👇", tab:'portfolio' };
     if (s.rentRaises === 0)
-        return { text:"Squeeze your tenant: hit “Raise the rent 💢” for a cash hit. Watch the strain bar — ease off before it redlines, or they walk.", scroll:'#tenants-strip' };
+        return { text:"Open the 💸 Squeeze tab and meet your tenant. Hit “Raise the rent 💢” for a cash hit — watch the strain on their face, and ease off before they walk.", tab:'operations' };
     if (props === 1)
         return { text:"One's a hobby, two's a portfolio. Buy another rental — owning more unlocks bigger, better properties.", tab:'portfolio' };
     if (s.feesInvented === 0 && s.money < 60000)
