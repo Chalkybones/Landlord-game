@@ -23,7 +23,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260728e">
+    <link rel="stylesheet" href="style.css?v=20260729a">
 </head>
 <body>
     <div class="app">
@@ -116,20 +116,10 @@
             </div>
         </section>
 
-        <!-- ===== FEATURED TENANTS STRIP (revealed once you own property) ===== -->
-        <section class="tenants-strip panel" id="tenants-strip" hidden>
-            <div class="panel-head">
-                <h2>Featured Tenants <span class="muted" id="tenant-total">(0 households)</span></h2>
-                <span class="panel-hint">Real Kiwis, paying your mortgage. Give them a squeeze.</span>
-            </div>
-            <div class="tenant-cards" id="tenant-cards">
-                <div class="empty-note">Buy a property to acquire your first tenants.</div>
-            </div>
-        </section>
-
         <!-- ===== TABS ===== -->
         <nav class="tabs" id="tabs">
-            <button class="tab active" data-tab="portfolio"><span class="tab-ico">🏚️</span><span class="tab-lbl">Portfolio</span></button>
+            <button class="tab active" data-tab="empire"><span class="tab-ico">🗺️</span><span class="tab-lbl">Empire</span></button>
+            <button class="tab" data-tab="portfolio"><span class="tab-ico">🏚️</span><span class="tab-lbl">Buy</span></button>
             <button class="tab" data-tab="operations" hidden><span class="tab-ico">💸</span><span class="tab-lbl">Squeeze</span></button>
             <button class="tab" data-tab="services" hidden><span class="tab-ico">🧾</span><span class="tab-lbl">Services</span></button>
             <button class="tab" data-tab="politics" hidden><span class="tab-ico">🏛️</span><span class="tab-lbl">Politics</span></button>
@@ -138,7 +128,22 @@
 
         <!-- ===== TAB PANELS ===== -->
         <main class="tab-body">
-            <section class="tab-panel active" data-panel="portfolio">
+            <section class="tab-panel active" data-panel="empire">
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Your Empire</h2>
+                        <span class="panel-hint" id="empire-stat">Every gold house is one you took off the market.</span>
+                    </div>
+                    <div id="empire-map" class="empire-map"></div>
+                    <div class="empire-legend">
+                        <span><i class="lg gold"></i> yours</span>
+                        <span><i class="lg red"></i> breaking point</span>
+                        <span><i class="lg dim"></i> still on the market</span>
+                        <span class="empire-tap">👆 tap a gold house to visit the household</span>
+                    </div>
+                </div>
+            </section>
+            <section class="tab-panel" data-panel="portfolio">
                 <div class="panel">
                     <div class="panel-head">
                         <h2>Acquire Property</h2>
@@ -164,6 +169,15 @@
             </section>
 
             <section class="tab-panel" data-panel="operations">
+                <section class="tenants-strip panel" id="tenants-strip" hidden>
+                    <div class="panel-head">
+                        <h2>Your Tenants <span class="muted" id="tenant-total">(0 households)</span></h2>
+                        <span class="panel-hint">Real Kiwis, paying your mortgage. Squeeze by name — watch their faces.</span>
+                    </div>
+                    <div class="tenant-cards" id="tenant-cards">
+                        <div class="empty-note">Buy a property to acquire your first tenants.</div>
+                    </div>
+                </section>
                 <div class="panel">
                     <div class="panel-head">
                         <h2>Revenue Optimisation</h2>
@@ -222,7 +236,7 @@
                 <button id="reset-game" class="utility-btn danger">☠ Reset</button>
             </div>
             <div class="footer-meta">
-                <span class="version">v1.7 — Dark Money Edition</span>
+                <span class="version">v1.8 — Dark Money Edition</span>
                 <span class="disclaimer">None of it is real. The horrors, however, are load-bearing.</span>
             </div>
         </footer>
@@ -242,6 +256,6 @@
         </div>
     </div>
 
-    <script src="game.js?v=20260728e"></script>
+    <script src="game.js?v=20260729a"></script>
 </body>
 </html>

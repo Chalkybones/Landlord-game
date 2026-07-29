@@ -24,6 +24,7 @@ const CFG = {
     BASE_HEAT_DECAY: 2.5,      // scrutiny lost per week with no help
     HEAT_MAX: 100,
     OFFLINE_CAP_HOURS: 8,
+    OFFLINE_WEEKS_CAP: 40,     // idle returns a modest welcome-back bump, never an economy-breaking windfall
     NEWS_COOLDOWN: 24,
     EVENT_COOLDOWN: 6,
     DILEMMA_COOLDOWN: 38,       // min real seconds between interactive dilemmas
@@ -466,6 +467,7 @@ function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 function $(id){ return document.getElementById(id); }
 
 function fmt(n){
+    if (!isFinite(n)) n = 0;                       // never surface $NaN / $Infinity from a corrupted save
     n = Math.floor(n);
     const neg = n < 0; n = Math.abs(n);
     let s;
@@ -474,7 +476,7 @@ function fmt(n){
     else s = n.toLocaleString('en-NZ');
     return (neg?'-':'') + s;
 }
-function money(n){ return '$' + fmt(n); }
+function money(n){ if (!isFinite(n)) n = 0; return n < 0 ? '-$' + fmt(-n) : '$' + fmt(n); }
 
 /* ---------------------------------------------------------- DERIVED / GETTERS */
 function multipliers(){
@@ -624,7 +626,8 @@ function saveGame(silent){
     } catch(e){}
 }
 function loadGame(){
-    const raw = localStorage.getItem(CFG.SAVE_KEY);
+    let raw = null;
+    try { raw = localStorage.getItem(CFG.SAVE_KEY); } catch(e){ raw = null; }   // private mode / storage blocked → play fresh, no crash
     if (!raw){ state = defaultState(); return false; }
     try {
         const loaded = JSON.parse(raw);
@@ -667,7 +670,9 @@ function offlineProgress(){
     const elapsed = (now() - (state.lastUpdate || now())) / 1000;
     if (elapsed < 30) return;
     const capped = Math.min(elapsed, CFG.OFFLINE_CAP_HOURS * 3600);
-    const weeks = capped / CFG.DEFAULT_SPEED;
+    // Cap the weeks that actually accrue: without this, 8h idle = 5760 game-weeks, which
+    // compounds marketIndex ~254x and hands a returning player an instant 'empire' win.
+    const weeks = Math.min(capped / CFG.DEFAULT_SPEED, CFG.OFFLINE_WEEKS_CAP);
     const flow = netCashflow();
     const earned = flow > 0 ? flow * weeks : 0;   // don't bankrupt you while away
     state.marketIndex *= Math.pow(1 + CFG.APPRECIATION/52, weeks);
@@ -681,6 +686,129 @@ function offlineProgress(){
 /* =============================================================== RENDERING */
 const updaters = [];
 
+/* ---- illustrated property art (style ②): little night-lit buildings drawn per
+   asset type, so every property reads as a place, not a spreadsheet row ---- */
+const ART_STYLE = { studio:'tower', doup:'cottage', exState:'state', leaky:'flats',
+                    auck:'house', townhouse:'townrow', prestige:'mansion', block:'apartment' };
+function winGrid(x, y, w, h, cols, rows, gap){
+    const cw = (w - gap*(cols+1))/cols, ch = (h - gap*(rows+1))/rows; let s = '';
+    for (let r=0;r<rows;r++) for (let c=0;c<cols;c++){
+        const lit = ((c*3 + r*5 + cols) % 7) > 1;   // most windows warm, a few dark
+        s += `<rect x="${(x+gap+c*(cw+gap)).toFixed(1)}" y="${(y+gap+r*(ch+gap)).toFixed(1)}" width="${cw.toFixed(1)}" height="${ch.toFixed(1)}" rx="1" fill="${lit?'var(--win)':'var(--win-dim)'}"/>`;
+    }
+    return s;
+}
+function houseArt(id){
+    const st = ART_STYLE[id] || 'house';
+    const A = {
+      tower:`<rect x="78" y="8" width="44" height="104" fill="#25474f"/><rect x="78" y="8" width="8" height="104" fill="#2d555d"/>${winGrid(88,16,26,90,2,7,4)}`,
+      cottage:`<polygon points="60,60 100,32 140,60" fill="#3a2a20"/><polygon points="66,60 100,37 134,60" fill="#4a3628"/><rect x="68" y="60" width="64" height="52" fill="#2a4a44"/>${winGrid(78,70,20,18,1,1,0)}<rect x="106" y="80" width="16" height="32" fill="#123028"/>`,
+      state:`<polygon points="46,54 78,30 122,30 154,54" fill="#3c2b22"/><polygon points="53,54 80,34 120,34 147,54" fill="#4d382a"/><rect x="50" y="54" width="100" height="58" fill="#2c544d"/>${winGrid(60,64,26,24,1,1,0)}${winGrid(116,64,26,24,1,1,0)}<rect x="92" y="80" width="18" height="32" fill="#123028"/>`,
+      flats:`<rect x="44" y="30" width="112" height="82" fill="#264b52"/><rect x="44" y="30" width="112" height="6" fill="#2f5a62"/>${winGrid(52,40,96,64,4,3,5)}`,
+      house:`<polygon points="52,58 100,30 148,58" fill="#33261d"/><rect x="60" y="58" width="80" height="54" fill="#2a4a44"/>${winGrid(70,68,20,18,1,1,0)}${winGrid(112,68,20,18,1,1,0)}<rect x="92" y="84" width="18" height="28" fill="#123028"/>`,
+      townrow:`${[0,1,2,3].map(i=>`<rect x="${36+i*32}" y="34" width="32" height="78" fill="${i%2?'#264b52':'#22454d'}"/><polygon points="${36+i*32},34 ${52+i*32},22 ${68+i*32},34" fill="#33261d"/>`).join('')}${winGrid(42,46,116,44,4,2,6)}`,
+      mansion:`<polygon points="40,50 100,24 160,50" fill="#33261d"/><rect x="48" y="50" width="104" height="62" fill="#2c544d"/><rect x="60" y="66" width="12" height="46" fill="#1c3c38"/><rect x="128" y="66" width="12" height="46" fill="#1c3c38"/>${winGrid(80,62,40,40,2,2,6)}<rect x="92" y="86" width="18" height="26" fill="#123028"/>`,
+      apartment:`<rect x="30" y="14" width="140" height="98" fill="#22454d"/><rect x="30" y="14" width="140" height="7" fill="#2b5560"/>${winGrid(40,26,120,78,7,5,5)}`,
+    };
+    return `<svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMax meet" class="house-svg">`
+         + `<rect x="0" y="111" width="200" height="9" fill="#081b1f"/>${A[st]||A.house}</svg>`;
+}
+
+/* ---- expressive tenant faces (style ③): a drawn face that changes with how
+   close the household is to being priced out ---- */
+const HAIR = {
+    short:'M17,44 Q18,18 44,18 Q70,18 71,44 Q64,30 44,30 Q24,30 17,44',
+    bun:'M18,44 Q18,17 44,17 Q70,17 70,44 Q66,28 44,28 Q22,28 18,44 M44,12 a7,7 0 1,0 .1,0',
+    bald:'M22,40 Q24,22 44,22 Q64,22 66,40 Q60,32 44,32 Q28,32 22,40',
+    curly:'M16,46 Q12,20 44,16 Q76,20 72,46 Q72,30 60,28 Q66,22 52,22 Q56,16 44,20 Q32,16 36,22 Q22,22 28,28 Q16,30 16,46',
+};
+const SKINS = ['#e8b48f','#d8a982','#c58a52','#a9703f','#8a5a34','#7f5230','#ecc6a6','#b57b48'];
+const HAIRCOLS = ['#4a2f1c','#17120e','#141010','#2a1a12','#c9cdd0','#8f9195','#3a2416'];
+const HAIRS = [HAIR.short, HAIR.bun, HAIR.bald, HAIR.curly];
+function tenantMoodColor(s){ return s>=74?'var(--red)':s>=45?'var(--gold)':'var(--green)'; }
+function ensureFace(t){
+    if (!t) return;
+    if (!t.skin)    t.skin    = pick(SKINS);
+    if (!t.hair)    t.hair    = pick(HAIRS);
+    if (!t.hairCol) t.hairCol = pick(HAIRCOLS);
+}
+function faceSVG(t){
+    ensureFace(t);
+    const s = t.strain, mood = s>=74?'breaking':s>=45?'strained':'ok';
+    const mouth = mood==='ok' ? 'M32,58 Q44,67 56,58' : mood==='strained' ? 'M33,60 Q44,60 55,60' : 'M33,63 Q44,55 55,63';
+    const browL = mood==='breaking' ? 'M28,40 L40,45' : mood==='strained' ? 'M28,42 L40,41' : 'M29,41 L40,40';
+    const browR = mood==='breaking' ? 'M60,40 L48,45' : mood==='strained' ? 'M60,42 L48,41' : 'M59,41 L48,40';
+    const tear = mood==='breaking' ? '<circle cx="34" cy="53" r="2.3" fill="#7fd0ff"/><circle cx="54" cy="53" r="2.3" fill="#7fd0ff"/>' : '';
+    return `<svg viewBox="0 0 88 88" class="face-svg"><circle cx="44" cy="46" r="27" fill="${t.skin}"/>`
+         + `<path d="${t.hair}" fill="${t.hairCol}"/><circle cx="35" cy="47" r="3" fill="#20130e"/><circle cx="53" cy="47" r="3" fill="#20130e"/>`
+         + `<path d="${browL}" stroke="#20130e" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+         + `<path d="${browR}" stroke="#20130e" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+         + `<path d="${mouth}" stroke="#5a2c26" stroke-width="2.6" fill="none" stroke-linecap="round"/>${tear}</svg>`;
+}
+
+/* ---- the Empire map (style ①): your holdings as a top-down street that fills
+   gold as you buy. Tapping a house you own "visits" the household (dive to ③). ---- */
+function miniHouse(st){
+    const roof  = st==='you' ? '#e6a94f' : st==='stressed' ? '#d1604a' : '#33454a';
+    const ridge = st==='you' ? '#f8cf7c' : st==='stressed' ? '#ec8f72' : '#465659';
+    const glow = st!=='market', lit = st==='you' || st==='stressed';
+    return `<svg viewBox="0 0 40 40">`
+        + (glow ? `<ellipse cx="20" cy="23" rx="15" ry="12" fill="url(#${st==='stressed'?'mhRed':'mhGold'})"/>` : '')
+        + `<rect x="9" y="13" width="22" height="18" rx="3" fill="${roof}"/>`
+        + `<line x1="11" y1="22" x2="29" y2="22" stroke="${ridge}" stroke-width="1.3"/>`
+        + (lit ? '<rect x="14" y="16" width="2.6" height="2.6" fill="#fff2cf"/><rect x="23" y="24" width="2.6" height="2.6" fill="#fff2cf"/>' : '')
+        + `</svg>`;
+}
+const EMPIRE_DEFS = `<svg width="0" height="0" class="empire-defs"><defs>`
+    + `<radialGradient id="mhGold" cx="50%" cy="55%" r="55%"><stop offset="0%" stop-color="rgba(255,192,90,.85)"/><stop offset="100%" stop-color="rgba(240,170,70,0)"/></radialGradient>`
+    + `<radialGradient id="mhRed" cx="50%" cy="55%" r="55%"><stop offset="0%" stop-color="rgba(255,110,90,.8)"/><stop offset="100%" stop-color="rgba(255,90,80,0)"/></radialGradient>`
+    + `</defs></svg>`;
+let _lastEmpireKey = '';
+function renderEmpire(force){
+    const wrap = $('empire-map'); if (!wrap) return;
+    const owned = Math.min(state.tenants, 84);                          // gold houses (display cap)
+    const stressed = Math.min(owned, state.featured.filter(t=>t && t.strain>=74).length);
+    const key = owned + '/' + stressed;
+    if (!force && key === _lastEmpireKey) return;                       // only rebuild when it actually changed
+    _lastEmpireKey = key;
+    const statEl = $('empire-stat');
+    if (owned <= 0){
+        wrap.innerHTML = EMPIRE_DEFS + `<div class="empire-empty"><div class="ee-moon">🌙</div>`
+            + `<div class="ee-title">Your street, from above.</div>`
+            + `<div class="ee-sub">You own none of it yet — every one of these homes is someone else's. Buy your first from <b>Buy</b>, and watch it turn gold.</div></div>`;
+        if (statEl) statEl.textContent = 'Not yet a landlord. Every house here still belongs to the people in it.';
+        return;
+    }
+    const total = Math.min(120, Math.max(24, Math.round(owned * 1.7) + 8));
+    const marketN = Math.max(0, total - owned);
+    let cells = EMPIRE_DEFS, s = stressed;
+    for (let i=0;i<owned;i++){ const st = s>0 ? (s--, 'stressed') : 'you'; cells += `<button class="ehouse ${st}" data-house="${i}" aria-label="A home you own — visit the household">${miniHouse(st)}</button>`; }
+    for (let i=0;i<marketN;i++) cells += `<span class="ehouse market">${miniHouse('market')}</span>`;
+    wrap.innerHTML = cells;
+    if (statEl){
+        const pct = Math.round(owned/total*100);
+        statEl.innerHTML = `<b>${fmt(state.tenants)} home${state.tenants===1?'':'s'}</b> off the market and onto your balance sheet · you own <b>${pct}%</b> of this street · <b>${fmt(state.tenants)}</b> household${state.tenants===1?'':'s'} pay your mortgage.`;
+    }
+}
+let _houseVisit = 0;
+function openHouseModal(){
+    if (!state.featured.length){ toast('This home is between tenancies right now.', 'event'); return; }
+    const idx = _houseVisit % state.featured.length; _houseVisit++;
+    const t = state.featured[idx]; ensureFace(t);
+    const col = tenantMoodColor(t.strain);
+    showModal(`<div class="modal-kicker">A home you own</div>
+        <div class="house-visit">
+            <div class="hv-avatar" style="--mood:${col}">${faceSVG(t)}</div>
+            <div class="hv-id"><h1 class="hv-name">${t.name}</h1><div class="hv-job">${t.job}</div>
+                <div class="hv-rent">Pays <b>${money(t.rent)}/wk</b> · <span style="color:${col}">${strainWord(t.strain)}</span></div></div>
+        </div>
+        <p class="hv-situation">${t.situation}</p>`,
+        [
+            { label:'Raise the rent 💢', cls:'gold', fn:()=>{ closeModal(); squeezeTenant(idx, { clientX: innerWidth/2, clientY: innerHeight*0.4 }); renderEmpire(true); } },
+            { label:'Leave them be', cls:'ghost', fn:()=> closeModal() },
+        ]);
+}
+
 function buildAll(){
     updaters.length = 0;
     buildProperties();
@@ -688,6 +816,7 @@ function buildAll(){
     buildServices();
     buildPolitics();
     renderTenants();
+    renderEmpire(true);
     renderNews(true);
 }
 
@@ -696,21 +825,28 @@ function buildProperties(){
     list.innerHTML = '';
     PROPERTIES.forEach(p=>{
         const card = document.createElement('div');
-        card.className = 'buy-card';
+        card.className = 'buy-card tile-card';
         card.innerHTML = `
-            <div class="buy-card-head">
-                <span class="buy-title"><span class="buy-emoji">${p.emoji}</span> ${p.name}${p.newBuild?' <span class="nb-badge">NEW BUILD</span>':''}</span>
-                <span class="buy-count" data-count>Owned 0</span>
+            <div class="tile-art">
+                <div class="tile-moon"></div>
+                ${houseArt(p.id)}
+                ${p.newBuild?'<span class="tile-nb">NEW BUILD</span>':''}
+                <span class="tile-owned" data-count>Owned 0</span>
             </div>
-            <div class="buy-desc">${p.desc}</div>
-            <div class="buy-stats">
-                <span>Price <b data-price></b></span>
-                <span>Deposit <b data-dep></b></span>
-                <span>Net <b data-net></b>/wk</span>
-                <span>+<b>${p.units}</b> hh</span>
-            </div>
-            <div class="lock-note" data-lock hidden></div>
-            <button class="buy-btn" data-buy>Buy</button>`;
+            <div class="tile-body">
+                <div class="buy-card-head">
+                    <span class="buy-title"><span class="buy-emoji">${p.emoji}</span> ${p.name}</span>
+                </div>
+                <div class="buy-desc">${p.desc}</div>
+                <div class="buy-stats">
+                    <span>Price <b data-price></b></span>
+                    <span>Deposit <b data-dep></b></span>
+                    <span>Net <b data-net></b>/wk</span>
+                    <span>+<b>${p.units}</b> hh</span>
+                </div>
+                <div class="lock-note" data-lock hidden></div>
+                <button class="buy-btn" data-buy>Buy</button>
+            </div>`;
         list.appendChild(card);
         const btn = card.querySelector('[data-buy]');
         btn.addEventListener('click', (e)=> buyProperty(p.id, e));
@@ -719,7 +855,8 @@ function buildProperties(){
             const st = state.properties[p.id];
             const unlocked = propertyCount() >= p.unlock;
             card.classList.toggle('locked', !unlocked);
-            card.querySelector('[data-count]').textContent = 'Owned ' + st.count;
+            card.classList.toggle('has-owned', st.count > 0);
+            card.querySelector('[data-count]').textContent = st.count > 0 ? 'Owned ×' + st.count : 'On the market';
             card.querySelector('[data-price]').textContent = money(st.cost);
             card.querySelector('[data-dep]').textContent = money(Math.floor(st.cost * p.deposit));
             const net = unitNet(p);
@@ -899,7 +1036,8 @@ function makeTenant(){
     const used = (state.featured||[]).map(t=>t && t.situation);
     let sit, tries = 0;
     do { sit = pick(T_SITUATION); tries++; } while (used.indexOf(sit) !== -1 && tries < 12);
-    return { name, job:pick(T_JOB), rent, strain: 12 + Math.floor(Math.random()*16), situation: sit, emoji: pick(['🧑','👩','👨','🧑‍🦱','👵','👨‍🦰','🧕','👩‍🦰','🧑‍🦳','👴']) };
+    return { name, job:pick(T_JOB), rent, strain: 12 + Math.floor(Math.random()*16), situation: sit,
+             skin: pick(SKINS), hair: pick(HAIRS), hairCol: pick(HAIRCOLS) };
 }
 function syncTenants(){
     state.tenants = baseTenants();
@@ -920,9 +1058,10 @@ function renderTenants(){
     state.featured.forEach((t, idx)=>{
         const card = document.createElement('div');
         card.className = 'tenant-card';
+        ensureFace(t);
         card.innerHTML = `
             <div class="tenant-top">
-                <div class="tenant-avatar">${t.emoji}</div>
+                <div class="tenant-avatar" data-avatar style="--mood:${tenantMoodColor(t.strain)}">${faceSVG(t)}</div>
                 <div>
                     <div class="tenant-name">${t.name}</div>
                     <div class="tenant-job">${t.job}</div>
@@ -956,6 +1095,8 @@ function updateTenantStrain(){
         if (bar) bar.style.width = clamp(t.strain,0,100) + '%';
         const lbl = c.querySelector('[data-strainlabel]');
         if (lbl) lbl.textContent = strainWord(t.strain);
+        const av = c.querySelector('[data-avatar]');
+        if (av){ const col = tenantMoodColor(t.strain); if (av.dataset.mood !== col){ av.dataset.mood = col; av.style.setProperty('--mood', col); av.innerHTML = faceSVG(t); } }
         const btn = c.querySelector('[data-squeeze]');
         if (btn){
             const near = t.strain >= 74;
@@ -1235,7 +1376,12 @@ function onWeek(){
     if (nowS - (state._lastEvent||0) > CFG.EVENT_COOLDOWN && Math.random() < eventProb){
         rollEvent(); state._lastEvent = nowS; firedEvent = true;
     }
-    if (state.heat >= CFG.HEAT_MAX - 1 && state.influence < 200){
+    // The Exposé: hold at the top of the red (heat ≥ 96) for three weeks running and
+    // Fiona Vane's story drops. Spike the Story (Politics) or just ease off the squeeze and
+    // heat decays out of the danger zone before she files — but keep pushing at the redline
+    // and no amount of banked influence saves you. (The old check demanded heat ≥ 99, which
+    // weekly decay pulled you under every tick, so this ending almost never actually fired.)
+    if (state.heat >= CFG.HEAT_MAX - 4){
         state.heatMaxStreak++;
         if (state.heatMaxStreak >= 3){ triggerEnding('expose'); return; }
     } else state.heatMaxStreak = 0;
@@ -1384,7 +1530,7 @@ const DILEMMAS = [
         { label:'Ride it out', cls:'ghost', apply:s=> addHeat(13),
           result:`You log off, confident it'll blow over. It does not blow over. It gets a follow-up. The follow-up has a lawyer in it.`, news:'bad' },
       ]},
-    { id:'church', title:'A structure presents itself ⛪', minPhase:1,
+    { id:'church', title:'A structure presents itself ⛪', minPhase:1, once:true,
       body:`<p>Your accountant, eyes shining, slides over a folder. "Register the entire portfolio," he whispers, "<b>as a religion.</b> Fully tax-exempt. Legally, a miracle."</p>`,
       choices:[
         { label:'Praise be — go tax-free', ach:'church', apply:s=>{ s.rentMultBonus += 0.025; addHeat(6); },
@@ -1400,7 +1546,7 @@ const DILEMMAS = [
         { label:'Decline', cls:'ghost',
           result:`You pass. The MP finds a more accommodating landlord within the hour. There is always a more accommodating landlord.`, news:'event' },
       ]},
-    { id:'winston', title:'Winston is on the line 🐎', minPhase:2,
+    { id:'winston', title:'Winston is on the line 🐎', minPhase:2, once:true,
       body:`<p>A gravelled voice you half-recognise mentions "an opportunity — a racehorse, a syndicate, and a select-committee timetable that could go either way."</p>`,
       choices:[
         { label:'"I\'m listening"', ach:'winston', apply:s=>{ s.money -= 25000; addInfluence(60); },
@@ -1408,7 +1554,7 @@ const DILEMMAS = [
         { label:'Hang up', cls:'ghost',
           result:`You hang up. Somewhere, a phone is already dialling the next number on a very short, very expensive list.`, news:'event' },
       ]},
-    { id:'kid', title:'A question at dinner 🍽',
+    { id:'kid', title:'A question at dinner 🍽', once:true,
       body:`<p>Your kid looks up from their plate. "Dad — why did the family in the newspaper have to leave their house? They didn't do anything."</p>`,
       choices:[
         { label:'Explain supply and demand', apply:s=> addHeat(2),
@@ -1451,7 +1597,7 @@ const DILEMMAS = [
         { label:'Invoice a "servicing surcharge"', apply:s=>{ s.money += 500; addHeat(6); s.feesInvented++; },
           result:`You bill them $500 for the reminder emails and reclassify the heat pump as "a modernist sculpture — non-operational by design."`, news:'bad' },
       ]},
-    { id:'award', title:'Landlord of the Year 🏆', minPhase:1,
+    { id:'award', title:'Landlord of the Year 🏆', minPhase:1, once:true,
       body:`<p>The Property Investors' Federation would like to present you with <b>Landlord of the Year</b>. There will be a gala, a trophy, and — unavoidably — press.</p>`,
       choices:[
         { label:'Accept the trophy', ach:'award', apply:s=>{ addInfluence(50); addHeat(8); },
@@ -1467,7 +1613,7 @@ const DILEMMAS = [
         { label:'Pass — even for you', cls:'ghost',
           result:`You pass. Empty homes in a housing crisis is, you decide, a bad look. The fee finds someone with a better look, or none at all.`, news:'event' },
       ]},
-    { id:'ministerText', title:'A minister texts you 📲', minPhase:3,
+    { id:'ministerText', title:'A minister texts you 📲', minPhase:3, once:true,
       body:`<p>A Cabinet minister forwards you a <b>draft Bill "for your thoughts"</b> — before it's public, before the tenants it governs have heard a word of it.</p>`,
       choices:[
         { label:'Suggest "improvements"', apply:s=>{ s.permHeatMult *= 0.9; addInfluence(40); },
@@ -1475,7 +1621,7 @@ const DILEMMAS = [
         { label:'Screenshot it for later', cls:'ghost', apply:s=>{ addInfluence(80); addHeat(6); },
           result:`You keep the receipt. Everyone in this game keeps receipts — it's the only thing anyone's actually building.`, news:'event' },
       ]},
-    { id:'rival', title:'A rival makes an offer 🛥', minPhase:1,
+    { id:'rival', title:'A rival makes an offer 🛥', minPhase:1, cond:()=> propertyCount() >= 2,
       body:`<p>A bigger landlord — nicer boat, worse Google reviews — offers <b>cash today</b> for your leakiest, most troublesome block. He seems oddly, specifically keen.</p>`,
       choices:[
         { label:'Sell it — his problem now', apply:s=>{ const c = sellTopProperty(false); if (c) fx('+'+money(c),'pos',{clientX:innerWidth/2,clientY:200}); },
@@ -1684,12 +1830,18 @@ function doPrestige(){
     showModal(`
         <div class="modal-kicker">Restructure</div>
         <h1>Move it all into the Trust 🏦</h1>
-        <p>Liquidate the visible empire — properties, cash, and the debt that built it, all gone from your name, which is the point. You keep your <b>political influence</b> (halved) and your <b>Business Services</b>, and return as a clean-skinned "first-time investor" the banks adore.</p>
+        <p>Liquidate the visible empire — properties, cash, and the debt that built it, all gone from your name, which is the point. You keep your <b>political influence</b> (halved) and your <b>one-off upgrades</b>; the weekly retainers you'll re-hire once there's rent to pay them from. You return as a clean-skinned "first-time investor" the banks adore.</p>
         <p>Permanent bonus rises to <b>+${Math.round(gain*CFG.LEGACY_BONUS*100)}% rent</b>, forever. You have faced no consequences. You have simply become harder to see.</p>
     `, [
         { label:'Not yet', cls:'ghost', fn:()=> closeModal() },
         { label:'Restructure', cls:'gold', fn:()=>{
-            const keep = { upgrades: state.upgrades, legacy: state.legacy+1, influence: Math.floor(state.influence/2),
+            // Keep capital upgrades (methKit, trust); drop weekly retainers so the fresh start
+            // isn't silently billed hires it can't afford with no rent yet — the load path
+            // strips them for exactly this reason. You re-engage them when they pay.
+            const keptUpgrades = Object.assign({}, state.upgrades);
+            ['propManager','rentAlgo','compliance','accomSupp','tribunal','astroturf','prFirm','lobbyist']
+                .forEach(id => delete keptUpgrades[id]);
+            const keep = { upgrades: keptUpgrades, legacy: state.legacy+1, influence: Math.floor(state.influence/2),
                            lifetime: state.lifetimeInfluence, muted: state.muted, buyQty: state.buyQty,
                            achievements: state.achievements };
             state = defaultState();
@@ -1986,8 +2138,7 @@ function resetGame(){
     ]);
 }
 function hardReset(){
-    localStorage.removeItem(CFG.SAVE_KEY);
-    localStorage.removeItem('kiwiLandlordEmpire');
+    try { localStorage.removeItem(CFG.SAVE_KEY); localStorage.removeItem('kiwiLandlordEmpire'); } catch(e){}
     location.reload();
 }
 
@@ -2046,9 +2197,9 @@ function coachStep(){
     if (tier >= 3 && s.influence < 60)
         return { text:"🔥 The press is circling. Go to Politics and spend Influence to spike the story — before the exposé drops.", tab:'politics' };
     if (props === 0)
-        return { text:"Buy your first rental below — it's your income, and the borrowing power to buy the next one. 👇", tab:'portfolio' };
+        return { text:"Open the 🏚️ Buy tab and get your first rental — it's your income, and the borrowing power to buy the next one. Watch it turn gold on your map.", tab:'portfolio' };
     if (s.rentRaises === 0)
-        return { text:"Squeeze your tenant: hit “Raise the rent 💢” for a cash hit. Watch the strain bar — ease off before it redlines, or they walk.", scroll:'#tenants-strip' };
+        return { text:"Open the 💸 Squeeze tab and meet your tenant. Hit “Raise the rent 💢” for a cash hit — watch the strain on their face, and ease off before they walk.", tab:'operations' };
     if (props === 1)
         return { text:"One's a hobby, two's a portfolio. Buy another rental — owning more unlocks bigger, better properties.", tab:'portfolio' };
     if (s.feesInvented === 0 && s.money < 60000)
@@ -2150,6 +2301,7 @@ function refresh(){
 
     for (let i=0;i<updaters.length;i++) updaters[i]();
     updateTenantStrain();
+    renderEmpire();
     updatePrestigeButton();
     checkAchievements();
     updateUnlocks();
@@ -2195,6 +2347,7 @@ function setupEvents(){
     $('help-btn').addEventListener('click', modalHelp);
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
+    const em = $('empire-map'); if (em) em.addEventListener('click', (e)=>{ const h = e.target.closest && e.target.closest('.ehouse[data-house]'); if (h) openHouseModal(); });
     $('modal-overlay').addEventListener('click', (e)=>{ if (e.target === $('modal-overlay') && !state.ended && !_dilemmaOpen) closeModal(); });
     document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !state.ended && !_dilemmaOpen) closeModal(); });
 }
