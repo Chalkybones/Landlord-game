@@ -24,6 +24,7 @@ const CFG = {
     BASE_HEAT_DECAY: 2.5,      // scrutiny lost per week with no help
     HEAT_MAX: 100,
     OFFLINE_CAP_HOURS: 8,
+    OFFLINE_WEEKS_CAP: 40,     // idle returns a modest welcome-back bump, never an economy-breaking windfall
     NEWS_COOLDOWN: 24,
     EVENT_COOLDOWN: 6,
     DILEMMA_COOLDOWN: 38,       // min real seconds between interactive dilemmas
@@ -466,6 +467,7 @@ function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 function $(id){ return document.getElementById(id); }
 
 function fmt(n){
+    if (!isFinite(n)) n = 0;                       // never surface $NaN / $Infinity from a corrupted save
     n = Math.floor(n);
     const neg = n < 0; n = Math.abs(n);
     let s;
@@ -474,7 +476,7 @@ function fmt(n){
     else s = n.toLocaleString('en-NZ');
     return (neg?'-':'') + s;
 }
-function money(n){ return '$' + fmt(n); }
+function money(n){ if (!isFinite(n)) n = 0; return n < 0 ? '-$' + fmt(-n) : '$' + fmt(n); }
 
 /* ---------------------------------------------------------- DERIVED / GETTERS */
 function multipliers(){
@@ -624,7 +626,8 @@ function saveGame(silent){
     } catch(e){}
 }
 function loadGame(){
-    const raw = localStorage.getItem(CFG.SAVE_KEY);
+    let raw = null;
+    try { raw = localStorage.getItem(CFG.SAVE_KEY); } catch(e){ raw = null; }   // private mode / storage blocked → play fresh, no crash
     if (!raw){ state = defaultState(); return false; }
     try {
         const loaded = JSON.parse(raw);
@@ -667,7 +670,9 @@ function offlineProgress(){
     const elapsed = (now() - (state.lastUpdate || now())) / 1000;
     if (elapsed < 30) return;
     const capped = Math.min(elapsed, CFG.OFFLINE_CAP_HOURS * 3600);
-    const weeks = capped / CFG.DEFAULT_SPEED;
+    // Cap the weeks that actually accrue: without this, 8h idle = 5760 game-weeks, which
+    // compounds marketIndex ~254x and hands a returning player an instant 'empire' win.
+    const weeks = Math.min(capped / CFG.DEFAULT_SPEED, CFG.OFFLINE_WEEKS_CAP);
     const flow = netCashflow();
     const earned = flow > 0 ? flow * weeks : 0;   // don't bankrupt you while away
     state.marketIndex *= Math.pow(1 + CFG.APPRECIATION/52, weeks);
@@ -1235,7 +1240,12 @@ function onWeek(){
     if (nowS - (state._lastEvent||0) > CFG.EVENT_COOLDOWN && Math.random() < eventProb){
         rollEvent(); state._lastEvent = nowS; firedEvent = true;
     }
-    if (state.heat >= CFG.HEAT_MAX - 1 && state.influence < 200){
+    // The Exposé: hold at the top of the red (heat ≥ 96) for three weeks running and
+    // Fiona Vane's story drops. Spike the Story (Politics) or just ease off the squeeze and
+    // heat decays out of the danger zone before she files — but keep pushing at the redline
+    // and no amount of banked influence saves you. (The old check demanded heat ≥ 99, which
+    // weekly decay pulled you under every tick, so this ending almost never actually fired.)
+    if (state.heat >= CFG.HEAT_MAX - 4){
         state.heatMaxStreak++;
         if (state.heatMaxStreak >= 3){ triggerEnding('expose'); return; }
     } else state.heatMaxStreak = 0;
@@ -1384,7 +1394,7 @@ const DILEMMAS = [
         { label:'Ride it out', cls:'ghost', apply:s=> addHeat(13),
           result:`You log off, confident it'll blow over. It does not blow over. It gets a follow-up. The follow-up has a lawyer in it.`, news:'bad' },
       ]},
-    { id:'church', title:'A structure presents itself ⛪', minPhase:1,
+    { id:'church', title:'A structure presents itself ⛪', minPhase:1, once:true,
       body:`<p>Your accountant, eyes shining, slides over a folder. "Register the entire portfolio," he whispers, "<b>as a religion.</b> Fully tax-exempt. Legally, a miracle."</p>`,
       choices:[
         { label:'Praise be — go tax-free', ach:'church', apply:s=>{ s.rentMultBonus += 0.025; addHeat(6); },
@@ -1400,7 +1410,7 @@ const DILEMMAS = [
         { label:'Decline', cls:'ghost',
           result:`You pass. The MP finds a more accommodating landlord within the hour. There is always a more accommodating landlord.`, news:'event' },
       ]},
-    { id:'winston', title:'Winston is on the line 🐎', minPhase:2,
+    { id:'winston', title:'Winston is on the line 🐎', minPhase:2, once:true,
       body:`<p>A gravelled voice you half-recognise mentions "an opportunity — a racehorse, a syndicate, and a select-committee timetable that could go either way."</p>`,
       choices:[
         { label:'"I\'m listening"', ach:'winston', apply:s=>{ s.money -= 25000; addInfluence(60); },
@@ -1408,7 +1418,7 @@ const DILEMMAS = [
         { label:'Hang up', cls:'ghost',
           result:`You hang up. Somewhere, a phone is already dialling the next number on a very short, very expensive list.`, news:'event' },
       ]},
-    { id:'kid', title:'A question at dinner 🍽',
+    { id:'kid', title:'A question at dinner 🍽', once:true,
       body:`<p>Your kid looks up from their plate. "Dad — why did the family in the newspaper have to leave their house? They didn't do anything."</p>`,
       choices:[
         { label:'Explain supply and demand', apply:s=> addHeat(2),
@@ -1451,7 +1461,7 @@ const DILEMMAS = [
         { label:'Invoice a "servicing surcharge"', apply:s=>{ s.money += 500; addHeat(6); s.feesInvented++; },
           result:`You bill them $500 for the reminder emails and reclassify the heat pump as "a modernist sculpture — non-operational by design."`, news:'bad' },
       ]},
-    { id:'award', title:'Landlord of the Year 🏆', minPhase:1,
+    { id:'award', title:'Landlord of the Year 🏆', minPhase:1, once:true,
       body:`<p>The Property Investors' Federation would like to present you with <b>Landlord of the Year</b>. There will be a gala, a trophy, and — unavoidably — press.</p>`,
       choices:[
         { label:'Accept the trophy', ach:'award', apply:s=>{ addInfluence(50); addHeat(8); },
@@ -1467,7 +1477,7 @@ const DILEMMAS = [
         { label:'Pass — even for you', cls:'ghost',
           result:`You pass. Empty homes in a housing crisis is, you decide, a bad look. The fee finds someone with a better look, or none at all.`, news:'event' },
       ]},
-    { id:'ministerText', title:'A minister texts you 📲', minPhase:3,
+    { id:'ministerText', title:'A minister texts you 📲', minPhase:3, once:true,
       body:`<p>A Cabinet minister forwards you a <b>draft Bill "for your thoughts"</b> — before it's public, before the tenants it governs have heard a word of it.</p>`,
       choices:[
         { label:'Suggest "improvements"', apply:s=>{ s.permHeatMult *= 0.9; addInfluence(40); },
@@ -1475,7 +1485,7 @@ const DILEMMAS = [
         { label:'Screenshot it for later', cls:'ghost', apply:s=>{ addInfluence(80); addHeat(6); },
           result:`You keep the receipt. Everyone in this game keeps receipts — it's the only thing anyone's actually building.`, news:'event' },
       ]},
-    { id:'rival', title:'A rival makes an offer 🛥', minPhase:1,
+    { id:'rival', title:'A rival makes an offer 🛥', minPhase:1, cond:()=> propertyCount() >= 2,
       body:`<p>A bigger landlord — nicer boat, worse Google reviews — offers <b>cash today</b> for your leakiest, most troublesome block. He seems oddly, specifically keen.</p>`,
       choices:[
         { label:'Sell it — his problem now', apply:s=>{ const c = sellTopProperty(false); if (c) fx('+'+money(c),'pos',{clientX:innerWidth/2,clientY:200}); },
@@ -1684,12 +1694,18 @@ function doPrestige(){
     showModal(`
         <div class="modal-kicker">Restructure</div>
         <h1>Move it all into the Trust 🏦</h1>
-        <p>Liquidate the visible empire — properties, cash, and the debt that built it, all gone from your name, which is the point. You keep your <b>political influence</b> (halved) and your <b>Business Services</b>, and return as a clean-skinned "first-time investor" the banks adore.</p>
+        <p>Liquidate the visible empire — properties, cash, and the debt that built it, all gone from your name, which is the point. You keep your <b>political influence</b> (halved) and your <b>one-off upgrades</b>; the weekly retainers you'll re-hire once there's rent to pay them from. You return as a clean-skinned "first-time investor" the banks adore.</p>
         <p>Permanent bonus rises to <b>+${Math.round(gain*CFG.LEGACY_BONUS*100)}% rent</b>, forever. You have faced no consequences. You have simply become harder to see.</p>
     `, [
         { label:'Not yet', cls:'ghost', fn:()=> closeModal() },
         { label:'Restructure', cls:'gold', fn:()=>{
-            const keep = { upgrades: state.upgrades, legacy: state.legacy+1, influence: Math.floor(state.influence/2),
+            // Keep capital upgrades (methKit, trust); drop weekly retainers so the fresh start
+            // isn't silently billed hires it can't afford with no rent yet — the load path
+            // strips them for exactly this reason. You re-engage them when they pay.
+            const keptUpgrades = Object.assign({}, state.upgrades);
+            ['propManager','rentAlgo','compliance','accomSupp','tribunal','astroturf','prFirm','lobbyist']
+                .forEach(id => delete keptUpgrades[id]);
+            const keep = { upgrades: keptUpgrades, legacy: state.legacy+1, influence: Math.floor(state.influence/2),
                            lifetime: state.lifetimeInfluence, muted: state.muted, buyQty: state.buyQty,
                            achievements: state.achievements };
             state = defaultState();
@@ -1986,8 +2002,7 @@ function resetGame(){
     ]);
 }
 function hardReset(){
-    localStorage.removeItem(CFG.SAVE_KEY);
-    localStorage.removeItem('kiwiLandlordEmpire');
+    try { localStorage.removeItem(CFG.SAVE_KEY); localStorage.removeItem('kiwiLandlordEmpire'); } catch(e){}
     location.reload();
 }
 
