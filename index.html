@@ -118,7 +118,8 @@
 
         <!-- ===== TABS ===== -->
         <nav class="tabs" id="tabs">
-            <button class="tab active" data-tab="portfolio"><span class="tab-ico">🏚️</span><span class="tab-lbl">Portfolio</span></button>
+            <button class="tab active" data-tab="empire"><span class="tab-ico">🗺️</span><span class="tab-lbl">Empire</span></button>
+            <button class="tab" data-tab="portfolio"><span class="tab-ico">🏚️</span><span class="tab-lbl">Buy</span></button>
             <button class="tab" data-tab="operations" hidden><span class="tab-ico">💸</span><span class="tab-lbl">Squeeze</span></button>
             <button class="tab" data-tab="services" hidden><span class="tab-ico">🧾</span><span class="tab-lbl">Services</span></button>
             <button class="tab" data-tab="politics" hidden><span class="tab-ico">🏛️</span><span class="tab-lbl">Politics</span></button>
@@ -127,7 +128,22 @@
 
         <!-- ===== TAB PANELS ===== -->
         <main class="tab-body">
-            <section class="tab-panel active" data-panel="portfolio">
+            <section class="tab-panel active" data-panel="empire">
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2>Your Empire</h2>
+                        <span class="panel-hint" id="empire-stat">Every gold house is one you took off the market.</span>
+                    </div>
+                    <div id="empire-map" class="empire-map"></div>
+                    <div class="empire-legend">
+                        <span><i class="lg gold"></i> yours</span>
+                        <span><i class="lg red"></i> breaking point</span>
+                        <span><i class="lg dim"></i> still on the market</span>
+                        <span class="empire-tap">👆 tap a gold house to visit the household</span>
+                    </div>
+                </div>
+            </section>
+            <section class="tab-panel" data-panel="portfolio">
                 <div class="panel">
                     <div class="panel-head">
                         <h2>Acquire Property</h2>

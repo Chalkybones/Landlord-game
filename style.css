@@ -824,3 +824,51 @@ body.redline::after {
     .tile-art { height: 70px; }
     .house-svg { height: 60px; }
 }
+
+/* ============================================================
+   REDESIGN — the Empire map (①) & the house-visit dive (① → ③)
+   ============================================================ */
+.empire-map {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 7px;
+    background:
+        radial-gradient(120% 90% at 50% -12%, rgba(42,208,198,.07), transparent 58%),
+        linear-gradient(180deg, #0a2228, #071a1e);
+    border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-height: 120px;
+}
+.empire-defs { position: absolute; width: 0; height: 0; }
+.ehouse { border: none; background: transparent; padding: 3px; margin: 0; line-height: 0; border-radius: 10px; }
+.ehouse svg { width: 100%; height: auto; display: block; }
+.ehouse.market { opacity: .5; }
+.ehouse[data-house] { cursor: pointer; transition: transform .12s, background .12s; }
+.ehouse[data-house]:hover { transform: translateY(-3px); background: rgba(255,200,110,.1); }
+.ehouse.stressed { animation: housePulse 1.6s ease-in-out infinite; }
+@keyframes housePulse { 0%,100% { filter: none; } 50% { filter: brightness(1.18); } }
+.empire-empty { grid-column: 1 / -1; text-align: center; padding: 26px 16px; }
+.empire-empty .ee-moon { font-size: 1.7em; }
+.empire-empty .ee-title { font-family: var(--font-display); font-size: 1.15em; color: var(--head); font-weight: 700; margin-top: 6px; }
+.empire-empty .ee-sub { font-size: .86em; color: var(--muted); max-width: 46ch; margin: 6px auto 0; line-height: 1.5; }
+.empire-empty .ee-sub b { color: var(--teal-light); }
+.empire-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: .76em; color: var(--muted); align-items: center; }
+.empire-legend span { display: flex; align-items: center; gap: 6px; }
+.empire-legend .lg { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.empire-legend .lg.gold { background: #e6a94f; }
+.empire-legend .lg.red { background: #d1604a; }
+.empire-legend .lg.dim { background: #33454a; }
+.empire-legend .empire-tap { margin-left: auto; color: var(--gold); font-weight: 700; }
+#empire-stat b { color: var(--gold); font-weight: 800; }
+
+.house-visit { display: flex; align-items: center; gap: 14px; margin: 6px 0 6px; }
+.hv-avatar { width: 72px; height: 72px; flex-shrink: 0; padding: 3px; border-radius: 50%; background: var(--mood, var(--green)); display: grid; place-items: center; }
+.hv-avatar .face-svg { width: 100%; height: 100%; border-radius: 50%; background: #0e2a2f; display: block; }
+.hv-name { font-size: 1.3em !important; margin: 0 !important; }
+.hv-job { font-size: .84em; color: var(--muted); }
+.hv-rent { font-size: .84em; color: var(--muted); margin-top: 3px; }
+.hv-rent b { color: var(--teal-light); }
+.hv-situation { font-size: .92em; color: var(--ink); background: var(--inset); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-style: italic; margin: 8px 0 2px; }
+
+@media (max-width: 700px) {
+    .empire-map { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 6px; padding: 11px; }
+    .empire-legend { font-size: .7em; gap: 6px 12px; }
+    .empire-legend .empire-tap { margin-left: 0; width: 100%; }
+    .hv-avatar { width: 60px; height: 60px; }
+}

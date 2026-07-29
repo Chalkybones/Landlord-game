@@ -746,6 +746,69 @@ function faceSVG(t){
          + `<path d="${mouth}" stroke="#5a2c26" stroke-width="2.6" fill="none" stroke-linecap="round"/>${tear}</svg>`;
 }
 
+/* ---- the Empire map (style ①): your holdings as a top-down street that fills
+   gold as you buy. Tapping a house you own "visits" the household (dive to ③). ---- */
+function miniHouse(st){
+    const roof  = st==='you' ? '#e6a94f' : st==='stressed' ? '#d1604a' : '#33454a';
+    const ridge = st==='you' ? '#f8cf7c' : st==='stressed' ? '#ec8f72' : '#465659';
+    const glow = st!=='market', lit = st==='you' || st==='stressed';
+    return `<svg viewBox="0 0 40 40">`
+        + (glow ? `<ellipse cx="20" cy="23" rx="15" ry="12" fill="url(#${st==='stressed'?'mhRed':'mhGold'})"/>` : '')
+        + `<rect x="9" y="13" width="22" height="18" rx="3" fill="${roof}"/>`
+        + `<line x1="11" y1="22" x2="29" y2="22" stroke="${ridge}" stroke-width="1.3"/>`
+        + (lit ? '<rect x="14" y="16" width="2.6" height="2.6" fill="#fff2cf"/><rect x="23" y="24" width="2.6" height="2.6" fill="#fff2cf"/>' : '')
+        + `</svg>`;
+}
+const EMPIRE_DEFS = `<svg width="0" height="0" class="empire-defs"><defs>`
+    + `<radialGradient id="mhGold" cx="50%" cy="55%" r="55%"><stop offset="0%" stop-color="rgba(255,192,90,.85)"/><stop offset="100%" stop-color="rgba(240,170,70,0)"/></radialGradient>`
+    + `<radialGradient id="mhRed" cx="50%" cy="55%" r="55%"><stop offset="0%" stop-color="rgba(255,110,90,.8)"/><stop offset="100%" stop-color="rgba(255,90,80,0)"/></radialGradient>`
+    + `</defs></svg>`;
+let _lastEmpireKey = '';
+function renderEmpire(force){
+    const wrap = $('empire-map'); if (!wrap) return;
+    const owned = Math.min(state.tenants, 84);                          // gold houses (display cap)
+    const stressed = Math.min(owned, state.featured.filter(t=>t && t.strain>=74).length);
+    const key = owned + '/' + stressed;
+    if (!force && key === _lastEmpireKey) return;                       // only rebuild when it actually changed
+    _lastEmpireKey = key;
+    const statEl = $('empire-stat');
+    if (owned <= 0){
+        wrap.innerHTML = EMPIRE_DEFS + `<div class="empire-empty"><div class="ee-moon">🌙</div>`
+            + `<div class="ee-title">Your street, from above.</div>`
+            + `<div class="ee-sub">You own none of it yet — every one of these homes is someone else's. Buy your first from <b>Buy</b>, and watch it turn gold.</div></div>`;
+        if (statEl) statEl.textContent = 'Not yet a landlord. Every house here still belongs to the people in it.';
+        return;
+    }
+    const total = Math.min(120, Math.max(24, Math.round(owned * 1.7) + 8));
+    const marketN = Math.max(0, total - owned);
+    let cells = EMPIRE_DEFS, s = stressed;
+    for (let i=0;i<owned;i++){ const st = s>0 ? (s--, 'stressed') : 'you'; cells += `<button class="ehouse ${st}" data-house="${i}" aria-label="A home you own — visit the household">${miniHouse(st)}</button>`; }
+    for (let i=0;i<marketN;i++) cells += `<span class="ehouse market">${miniHouse('market')}</span>`;
+    wrap.innerHTML = cells;
+    if (statEl){
+        const pct = Math.round(owned/total*100);
+        statEl.innerHTML = `<b>${fmt(state.tenants)} home${state.tenants===1?'':'s'}</b> off the market and onto your balance sheet · you own <b>${pct}%</b> of this street · <b>${fmt(state.tenants)}</b> household${state.tenants===1?'':'s'} pay your mortgage.`;
+    }
+}
+let _houseVisit = 0;
+function openHouseModal(){
+    if (!state.featured.length){ toast('This home is between tenancies right now.', 'event'); return; }
+    const idx = _houseVisit % state.featured.length; _houseVisit++;
+    const t = state.featured[idx]; ensureFace(t);
+    const col = tenantMoodColor(t.strain);
+    showModal(`<div class="modal-kicker">A home you own</div>
+        <div class="house-visit">
+            <div class="hv-avatar" style="--mood:${col}">${faceSVG(t)}</div>
+            <div class="hv-id"><h1 class="hv-name">${t.name}</h1><div class="hv-job">${t.job}</div>
+                <div class="hv-rent">Pays <b>${money(t.rent)}/wk</b> · <span style="color:${col}">${strainWord(t.strain)}</span></div></div>
+        </div>
+        <p class="hv-situation">${t.situation}</p>`,
+        [
+            { label:'Raise the rent 💢', cls:'gold', fn:()=>{ closeModal(); squeezeTenant(idx, { clientX: innerWidth/2, clientY: innerHeight*0.4 }); renderEmpire(true); } },
+            { label:'Leave them be', cls:'ghost', fn:()=> closeModal() },
+        ]);
+}
+
 function buildAll(){
     updaters.length = 0;
     buildProperties();
@@ -753,6 +816,7 @@ function buildAll(){
     buildServices();
     buildPolitics();
     renderTenants();
+    renderEmpire(true);
     renderNews(true);
 }
 
@@ -2133,7 +2197,7 @@ function coachStep(){
     if (tier >= 3 && s.influence < 60)
         return { text:"🔥 The press is circling. Go to Politics and spend Influence to spike the story — before the exposé drops.", tab:'politics' };
     if (props === 0)
-        return { text:"Buy your first rental below — it's your income, and the borrowing power to buy the next one. 👇", tab:'portfolio' };
+        return { text:"Open the 🏚️ Buy tab and get your first rental — it's your income, and the borrowing power to buy the next one. Watch it turn gold on your map.", tab:'portfolio' };
     if (s.rentRaises === 0)
         return { text:"Open the 💸 Squeeze tab and meet your tenant. Hit “Raise the rent 💢” for a cash hit — watch the strain on their face, and ease off before they walk.", tab:'operations' };
     if (props === 1)
@@ -2237,6 +2301,7 @@ function refresh(){
 
     for (let i=0;i<updaters.length;i++) updaters[i]();
     updateTenantStrain();
+    renderEmpire();
     updatePrestigeButton();
     checkAchievements();
     updateUnlocks();
@@ -2282,6 +2347,7 @@ function setupEvents(){
     $('help-btn').addEventListener('click', modalHelp);
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
+    const em = $('empire-map'); if (em) em.addEventListener('click', (e)=>{ const h = e.target.closest && e.target.closest('.ehouse[data-house]'); if (h) openHouseModal(); });
     $('modal-overlay').addEventListener('click', (e)=>{ if (e.target === $('modal-overlay') && !state.ended && !_dilemmaOpen) closeModal(); });
     document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !state.ended && !_dilemmaOpen) closeModal(); });
 }
