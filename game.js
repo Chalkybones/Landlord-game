@@ -2264,6 +2264,10 @@ function canAffordAnyProperty(){ return PROPERTIES.some(p => propertyCount() >= 
 function anyHireEngaged(){ return SERVICES.some(sv => sv.kind === 'hire' && state.upgrades[sv.id]); }
 let _coachStep = null;
 function updateCoach(){
+    const coach = $('coach');
+    if (coach) coach.hidden = !!state.coachOff;      // player dismissed the advisor
+    updateCoachBtn();
+    if (state.coachOff) return;
     const step = coachStep();
     const el = $('coach-step'); if (!el) return;
     if (!_coachStep || _coachStep.text !== step.text){
@@ -2272,6 +2276,17 @@ function updateCoach(){
     }
     _coachStep = step;
     const cta = $('coach-cta'); if (cta) cta.hidden = !(step.tab || step.scroll);
+}
+function updateCoachBtn(){
+    const b = $('coach-btn'); if (!b) return;
+    b.classList.toggle('off', !!state.coachOff);
+    b.title = state.coachOff ? 'Show the advisor' : 'Hide the advisor';
+}
+function setCoach(on){
+    state.coachOff = !on;
+    updateCoach();
+    saveGame(true);
+    toast(on ? '🎯 Advisor back on.' : 'Advisor hidden — tap 🎯 up top to bring it back.', on ? 'good' : 'event');
 }
 
 /* =============================================================== REFRESH */
@@ -2397,6 +2412,8 @@ function setupEvents(){
     $('prestige-btn').addEventListener('click', doPrestige);
     $('mute-btn').addEventListener('click', toggleMute);
     $('help-btn').addEventListener('click', modalHelp);
+    const cClose = $('coach-close'); if (cClose) cClose.addEventListener('click', ()=> setCoach(false));
+    const cBtn = $('coach-btn'); if (cBtn) cBtn.addEventListener('click', ()=> setCoach(!!state.coachOff));
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
     const em = $('empire-map'); if (em) em.addEventListener('click', (e)=>{ const h = e.target.closest && e.target.closest('.ehouse[data-house]'); if (h) openHouseModal(); });

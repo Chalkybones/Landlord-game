@@ -898,3 +898,14 @@ body.redline::after {
 .tenant-stakes { font-size: .68em; color: var(--muted-2); line-height: 1.35; margin: -1px 0 1px; }
 .tenant-stakes b { color: #ff8a6a; }
 @media (max-width: 700px) { .info-btn { width: 18px; height: 18px; } .tenant-stakes { font-size: .66em; } }
+
+/* dismissible advisor (coach) */
+.coach-close {
+    flex-shrink: 0; align-self: center; width: 27px; height: 27px; border-radius: 8px;
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+    font-size: 1.2em; line-height: 1; cursor: pointer; display: grid; place-items: center; transition: all .12s;
+}
+.coach-close:hover { background: rgba(255,91,91,.14); color: var(--red); border-color: rgba(255,91,91,.4); }
+#coach-btn.off { opacity: .5; }
+#coach-btn:not(.off) { background: rgba(242,192,74,.16); border-color: rgba(242,192,74,.34); }
+@media (max-width: 700px) { .coach-close { width: 30px; height: 30px; } }
