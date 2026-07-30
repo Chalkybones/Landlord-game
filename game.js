@@ -270,20 +270,31 @@ const HEAT_TIERS = [
 // names (kept culturally consistent rather than randomly mashed together).
 const EURO_FIRST = ['James','Emma','Jack','Olivia','Liam','Sophie','Ben','Grace','Sam','Ella','Josh','Kate','Ryan','Chloe','Dan','Hannah','Matt','Lucy','Tom','Amy','Connor','Georgia','Zoe','Nathan','Holly','Aaron','Bridget','Scott','Paige','Megan','Luke','Sarah','Mark','Rebecca','Craig','Jess','Pete','Kylie','Shane','Nicola','Wayne','Donna','Bruce','Sharon','Kevin','Ruth','Gary','Steph'];
 const EURO_LAST  = ['Smith','Wilson','Taylor','Brown','Walker','Thompson','Wright','Baker','Harris','Clark','Robinson','Scott','Murphy','O\'Brien','Reid','Marsh','Cooper','Bennett','Hughes','Fraser','Ellis','Gray','Doyle','Nolan','Stewart','Webb','Hill','Ward','Watson','Kelly','Moore','Bell','Cox','Fisher','Palmer','Dixon','Barnes','Hayes','Newton','Coleman','Pratt','Sinclair'];
-const MAORI_FIRST = ['Aroha','Wiremu','Manaia','Hine','Nikau','Rangi','Tama','Anahera','Moana','Kauri'];
-const MAORI_LAST  = ['Ngata','Hohepa','Rewiti','Waititi','Katene','Wetere','Paki','Williams'];
-const PASI_FIRST  = ['Sione','Sina','Mele','Fetu','Ana','Talei','Losa'];
-const PASI_LAST   = ['Faleolo','Tuilagi','Solomona','Fifita','Vaka','Latu'];
-const ASIAN_FIRST = ['Priya','Raj','Mei','Anika','Jun','Wei','Aarav','Sanjay'];
-const ASIAN_LAST  = ['Patel','Singh','Kaur','Chen','Nguyen','Kim','Wang','Reddy'];
+const MAORI_FIRST = ['Aroha','Wiremu','Manaia','Hine','Nikau','Rangi','Tama','Anahera','Moana','Kauri','Maia','Ari','Marama','Awhina','Tane','Kaia','Ihaia','Reweti','Tipene','Kahurangi','Manawa','Ngaio','Hemi','Ruruhira'];
+const MAORI_LAST  = ['Ngata','Hohepa','Rewiti','Waititi','Katene','Wetere','Paki','Williams','Kingi','Heke','Rata','Pomare','Tainui','Nikora','Kaa','Hetet','Wikaira','Mahuta'];
+const PASI_FIRST  = ['Sione','Sina','Mele','Fetu','Ana','Talei','Losa','Manu','Viliami','Sela','Tevita','Malia','Isaia','Lupe','Teuila','Sefo','Filipo','Salote','Naomi','Junior'];
+const PASI_LAST   = ['Faleolo','Tuilagi','Solomona','Fifita','Vaka','Latu','Taufa','Kaufusi','Havili','Pouli','Sopoaga','Faletau','Vaea','Toloa'];
+const ASIAN_FIRST = ['Priya','Raj','Mei','Anika','Jun','Wei','Aarav','Sanjay','Divya','Fang','Hiro','Lakshmi','Nadia','Quan','Thanh','Yong','Zara','Ji-woo','Ravi','Meera','Aisha','Sunil','Ling','Arjun'];
+const ASIAN_LAST  = ['Patel','Singh','Kaur','Chen','Nguyen','Kim','Wang','Reddy','Lee','Liu','Zhang','Tran','Park','Gupta','Sharma','Rao','Huang','Ng','Das','Le'];
 
 function makeName(){
     const r = Math.random();
-    if (r < 0.72) return { name: pick(EURO_FIRST) + ' ' + pick(EURO_LAST), eth:'euro' };
-    if (r < 0.80) return { name: pick(MAORI_FIRST) + ' ' + pick(Math.random()<0.5 ? MAORI_LAST : EURO_LAST), eth:'maori' };
-    if (r < 0.87) return { name: pick(PASI_FIRST) + ' ' + pick(PASI_LAST), eth:'pasi' };
-    if (r < 0.95) return { name: pick(ASIAN_FIRST) + ' ' + pick(ASIAN_LAST), eth:'asian' };
+    if (r < 0.38) return { name: pick(EURO_FIRST) + ' ' + pick(EURO_LAST), eth:'euro' };
+    if (r < 0.60) return { name: pick(MAORI_FIRST) + ' ' + pick(Math.random()<0.5 ? MAORI_LAST : EURO_LAST), eth:'maori' };
+    if (r < 0.75) return { name: pick(PASI_FIRST) + ' ' + pick(PASI_LAST), eth:'pasi' };
+    if (r < 0.93) return { name: pick(ASIAN_FIRST) + ' ' + pick(ASIAN_LAST), eth:'asian' };
     return { name: pick(EURO_FIRST) + ' ' + pick(MAORI_LAST.concat(PASI_LAST)), eth:'mixed' };   // a few genuinely mixed
+}
+// The visible roster is only ~4 cards, so a fair draw still clusters into one
+// ethnicity often enough to read as "everyone's the same". Nudge against that:
+// re-roll a few times if this ethnicity already fills 2+ of the *settled* slots.
+// Only counts siblings already on the current face version, so it behaves during
+// the one-time re-cast (unprocessed slots still carry stale ethnicity) too.
+function pickDiverseName(self){
+    let id = makeName(), guard = 0;
+    const clustered = e => (state.featured || []).filter(t => t && t !== self && t.faceV === FACE_V && t.eth === e).length >= 2;
+    while (guard++ < 3 && clustered(id.eth)) id = makeName();
+    return id;
 }
 const T_JOB = [
     'ED nurse, night shifts','Primary school teacher','Supermarket 2IC','Barista + Uber, both',
@@ -748,15 +759,23 @@ function ethFromName(name){
     return 'euro';
 }
 function tenantMoodColor(s){ return s>=74?'var(--red)':s>=45?'var(--gold)':'var(--green)'; }
-const FACE_V = 2;
+const FACE_V = 3;
 function ensureFace(t){
     if (!t) return;
-    if (!t.eth)  t.eth  = ethFromName(t.name);
-    if (!t.hair) t.hair = pick(HAIRS);
-    if (t.faceV !== FACE_V){                     // (re)derive tone from ethnicity — also migrates
-        t.skin    = pick(SKIN_BY_ETH[t.eth]    || SKIN_BY_ETH.euro);   // legacy all-brown saves
+    if (t.faceV !== FACE_V){
+        // v3: re-cast identity once so an existing roster reflects a diverse NZ
+        // instead of the old Pākehā-heavy generator. Keep their story
+        // (job / situation / strain / rent) — same tenant, fresh face + name.
+        const id  = pickDiverseName(t);
+        t.name    = id.name;
+        t.eth     = id.eth;
+        t.skin    = pick(SKIN_BY_ETH[t.eth]    || SKIN_BY_ETH.euro);
+        t.hair    = pick(HAIRS);
         t.hairCol = pick(HAIRCOL_BY_ETH[t.eth] || HAIRCOL_BY_ETH.euro);
         t.faceV   = FACE_V;
+    } else {
+        if (!t.eth)  t.eth  = ethFromName(t.name);
+        if (!t.hair) t.hair = pick(HAIRS);
     }
 }
 function faceSVG(t){
@@ -1062,7 +1081,7 @@ function meetsNeed(need){
    a refresh — repaints in-progress departures instead of wiping them. */
 let _leaving = {};
 function makeTenant(){
-    const id = makeName();
+    const id = pickDiverseName();
     const rent = 420 + Math.floor(Math.random()*10)*35;
     const used = (state.featured||[]).map(t=>t && t.situation);
     let sit, tries = 0;
