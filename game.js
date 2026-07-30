@@ -30,6 +30,10 @@ const CFG = {
     DILEMMA_COOLDOWN: 52,       // min real seconds between interactive dilemmas
     DILEMMA_PROB: 0.12,         // per-eligible-week chance one fires
     DILEMMA_RECENT: 4,          // don't re-show any of the last N dilemmas (keeps them varied)
+    // --- anti-spam: repeated squeezing builds a *pattern*, and Vane's file with it ---
+    SPREE_CAP: 12,              // max "recent squeezing" level
+    SPREE_DOSSIER: 0.4,         // extra dossier per squeeze, per spree level
+    SPREE_DECAY: 1.0,           // spree cooled per quiet week
     SAVE_KEY: 'kiwiLandlordEmpire_v2',
     LEGACY_BONUS: 0.15,        // +15% permanent rent per Restructure
     // --- the bank ---
@@ -467,6 +471,7 @@ function defaultState() {
         feesInvented: 0, fhbSales: 0, heatMaxStreak: 0, ended: false,
         achievements: {},          // id -> true (Rap Sheet)
         dossier: 0,                // the reporter's investigation, 0–100
+        _spree: 0,                 // recent squeeze intensity (anti-spam: feeds the dossier)
         _dossierChapter: 0,        // which escalation beat she's reached
         unlocked: { portfolio: true },  // progressive disclosure of tabs/systems
     };
@@ -1427,7 +1432,12 @@ function addHeat(delta, e){
     state.heat = clamp(state.heat + delta, 0, CFG.HEAT_MAX);
     if (state.heat >= 25) state._everHot = true;         // unlocks Politics for good
     if (delta > 0){
-        dossierNudge(delta * 0.22);                      // every bit of scrutiny feeds her file
+        let feed = delta * 0.22;                          // every bit of scrutiny feeds her file
+        if (e){                                           // a deliberate squeeze — repetition is the story
+            state._spree = Math.min((state._spree || 0) + 1, CFG.SPREE_CAP);
+            feed += state._spree * CFG.SPREE_DOSSIER;      // spam the same trick and she files faster
+        }
+        dossierNudge(feed);
         pokeScrutiny();                                  // make the meter visibly react to the squeeze
         if (e) teachHeat();                              // first player-caused heat → explain the cost
     }
@@ -1444,6 +1454,7 @@ function addInfluence(delta, e){
 function onWeek(){
     const m = multipliers();
     state.heat = clamp(state.heat - m.heatDecay, 0, CFG.HEAT_MAX);
+    state._spree = Math.max(0, (state._spree || 0) - CFG.SPREE_DECAY);   // a quiet week cools the pattern
     state.marketIndex *= (1 + CFG.APPRECIATION/52);   // steady appreciation
     dossierTick();
 
@@ -2368,7 +2379,7 @@ function updateUnlocks(){
     reveal('operations', props>=1, 'Squeeze — raise rents & invent fees');
     reveal('news',       props>=1, 'News feed');
     reveal('services',   props>=3, 'Services — hire the professionals');
-    reveal('politics',   state._everHot || state.influence>0 || props>=4, 'Politics — buy your way out of scrutiny');
+    reveal('politics',   state._everHot || state.heat >= 25 || state.influence>0 || props>=4, 'Politics — buy your way out of scrutiny');
     const ts = $('tenants-strip'); if (ts) ts.hidden = props < 1;
 }
 
@@ -2412,7 +2423,13 @@ function updateCoach(){
         el.classList.remove('coach-pop'); void el.offsetWidth; el.classList.add('coach-pop');
     }
     _coachStep = step;
-    const cta = $('coach-cta'); if (cta) cta.hidden = !(step.tab || step.scroll);
+    const cta = $('coach-cta');
+    if (cta){
+        // only offer "Show me →" when its destination is actually reachable — otherwise the
+        // button silently no-ops (selectTab ignores a hidden tab) and looks like it does nothing
+        const tb = step.tab ? document.querySelector(`.tab[data-tab="${step.tab}"]`) : null;
+        cta.hidden = step.tab ? !(tb && !tb.hidden) : !step.scroll;
+    }
 }
 function updateCoachBtn(){
     const b = $('coach-btn'); if (!b) return;
