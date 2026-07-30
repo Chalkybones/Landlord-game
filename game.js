@@ -95,7 +95,7 @@ const OPERATIONS = [
 
     { id:'airbnb', emoji:'🧳', name:'Convert to Airbnb', heat:11, needTenants:true, cost:5000,
       money:(s,m)=> grossRentWeekly()*2.2 + 10000, removesHousehold:true,
-      desc:'Housing a tourist three nights beats housing a nurse three years. The maths is the maths — and the maths just left for the Gold Coast.',
+      desc:'Flip one of your long-term rentals to short-stay: a fat cash lump now, and the household living there is out. Housing a tourist three nights beats housing a nurse three years.',
       news:s => `Long-term rental flipped to short-stay. A family of four replaced by a bucks\' party from Ballarat. Five stars, would evict again.` },
 
     { id:'subdivide', emoji:'🚪', name:'Add a Consent-Free Granny Flat', heat:15, needTenants:true, cost:10000,
@@ -214,7 +214,7 @@ const SERVICES = [
     { id:'astroturf', emoji:'📣', name:'Astroturf "Renters\' Group"', kind:'hire',
       fee:{flat:2200}, signup:15000, need:{phase:2},
       does:'A "grassroots" tenant voice that mysteriously agrees with landlords, quoted in the press whenever you\'re under fire.',
-      live:'All scrutiny ×0.75', tag:'All heat ×0.75',
+      live:'Squeeze scrutiny ×0.75', tag:'Squeeze heat ×0.75',
       desc:'The grass is plastic, the roots are yours, and the quarterly press releases write themselves. So does the outrage.' },
     { id:'prFirm', emoji:'📰', name:'PR Crisis Firm on Retainer', kind:'hire',
       fee:{flat:3000}, signup:20000, need:{phase:2},
@@ -279,11 +279,11 @@ const ASIAN_LAST  = ['Patel','Singh','Kaur','Chen','Nguyen','Kim','Wang','Reddy'
 
 function makeName(){
     const r = Math.random();
-    if (r < 0.72) return pick(EURO_FIRST) + ' ' + pick(EURO_LAST);
-    if (r < 0.80) return pick(MAORI_FIRST) + ' ' + pick(Math.random()<0.5 ? MAORI_LAST : EURO_LAST);
-    if (r < 0.87) return pick(PASI_FIRST) + ' ' + pick(PASI_LAST);
-    if (r < 0.95) return pick(ASIAN_FIRST) + ' ' + pick(ASIAN_LAST);
-    return pick(EURO_FIRST) + ' ' + pick(MAORI_LAST.concat(PASI_LAST));   // a few genuinely mixed
+    if (r < 0.72) return { name: pick(EURO_FIRST) + ' ' + pick(EURO_LAST), eth:'euro' };
+    if (r < 0.80) return { name: pick(MAORI_FIRST) + ' ' + pick(Math.random()<0.5 ? MAORI_LAST : EURO_LAST), eth:'maori' };
+    if (r < 0.87) return { name: pick(PASI_FIRST) + ' ' + pick(PASI_LAST), eth:'pasi' };
+    if (r < 0.95) return { name: pick(ASIAN_FIRST) + ' ' + pick(ASIAN_LAST), eth:'asian' };
+    return { name: pick(EURO_FIRST) + ' ' + pick(MAORI_LAST.concat(PASI_LAST)), eth:'mixed' };   // a few genuinely mixed
 }
 const T_JOB = [
     'ED nurse, night shifts','Primary school teacher','Supermarket 2IC','Barista + Uber, both',
@@ -722,15 +722,42 @@ const HAIR = {
     bald:'M22,40 Q24,22 44,22 Q64,22 66,40 Q60,32 44,32 Q28,32 22,40',
     curly:'M16,46 Q12,20 44,16 Q76,20 72,46 Q72,30 60,28 Q66,22 52,22 Q56,16 44,20 Q32,16 36,22 Q22,22 28,28 Q16,30 16,46',
 };
-const SKINS = ['#e8b48f','#d8a982','#c58a52','#a9703f','#8a5a34','#7f5230','#ecc6a6','#b57b48'];
-const HAIRCOLS = ['#4a2f1c','#17120e','#141010','#2a1a12','#c9cdd0','#8f9195','#3a2416'];
 const HAIRS = [HAIR.short, HAIR.bun, HAIR.bald, HAIR.curly];
+/* Skin & hair keyed to the tenant's (name-derived) ethnicity, so a "James Wilson"
+   doesn't come out the same tone as a "Sione Faleolo". Names are NZ-distributed
+   (majority Pākehā), and the faces should match rather than all reading brown. */
+const SKIN_BY_ETH = {
+    euro:  ['#f4d8c5','#eecbb2','#e9bd9c','#f1d2bd','#e6bfa2','#f3d3ba','#ddb094'],
+    maori: ['#c98d5a','#b5804f','#a9703f','#bd8450','#c2905e'],
+    pasi:  ['#8a5a34','#7f5230','#95623a','#734a2c','#8f5f38'],
+    asian: ['#eccfa8','#e2bf92','#d5aa7a','#e8c79c','#d9b68a'],
+    mixed: ['#d8a982','#c58a52','#e0bd90','#cf9a6e','#c99a6a'],
+};
+const HAIRCOL_BY_ETH = {
+    euro:  ['#3a2416','#5a3a1e','#8a6a3a','#caa86a','#b0592a','#c9cdd0','#2a1a10','#6b4a2a'],
+    maori: ['#141010','#1a120c','#2a1a10','#0f0b08'],
+    pasi:  ['#141010','#1a120c','#231812','#0f0b08'],
+    asian: ['#141010','#1a120c','#231812','#2a1a10'],
+    mixed: ['#2a1a10','#3a2416','#141010','#1a120c'],
+};
+function ethFromName(name){
+    const p = (name || '').split(' '), first = p[0], last = p[p.length-1];
+    if (MAORI_FIRST.indexOf(first) >= 0 || MAORI_LAST.indexOf(last) >= 0) return 'maori';
+    if (PASI_FIRST.indexOf(first)  >= 0 || PASI_LAST.indexOf(last)  >= 0) return 'pasi';
+    if (ASIAN_FIRST.indexOf(first) >= 0 || ASIAN_LAST.indexOf(last) >= 0) return 'asian';
+    return 'euro';
+}
 function tenantMoodColor(s){ return s>=74?'var(--red)':s>=45?'var(--gold)':'var(--green)'; }
+const FACE_V = 2;
 function ensureFace(t){
     if (!t) return;
-    if (!t.skin)    t.skin    = pick(SKINS);
-    if (!t.hair)    t.hair    = pick(HAIRS);
-    if (!t.hairCol) t.hairCol = pick(HAIRCOLS);
+    if (!t.eth)  t.eth  = ethFromName(t.name);
+    if (!t.hair) t.hair = pick(HAIRS);
+    if (t.faceV !== FACE_V){                     // (re)derive tone from ethnicity — also migrates
+        t.skin    = pick(SKIN_BY_ETH[t.eth]    || SKIN_BY_ETH.euro);   // legacy all-brown saves
+        t.hairCol = pick(HAIRCOL_BY_ETH[t.eth] || HAIRCOL_BY_ETH.euro);
+        t.faceV   = FACE_V;
+    }
 }
 function faceSVG(t){
     ensureFace(t);
@@ -908,10 +935,14 @@ function opTags(op){
     const t = [];
     if (op.cost) t.push(`<span class="tag cost">−${money(op.cost)}</span>`);
     if (op.money){ const v = op.money(state, multipliers()); if (v) t.push(`<span class="tag ${v<0?'cost':'money'}">${v<0?'−':'+'}${money(Math.abs(v))}</span>`); }
-    if (op.rentBoost) t.push(`<span class="tag money">+${Math.round(op.rentBoost*100)}% rent</span>`);
+    if (op.rentBoost) t.push(`<span class="tag money">+${(op.rentBoost*100).toFixed(1).replace(/\.0$/,'')}% rent</span>`);
+    if (op.addsUnits) t.push(`<span class="tag money">+${op.addsUnits} household${op.addsUnits>1?'s':''}</span>`);
+    if (op.removesHousehold) t.push(`<span class="tag cost">−1 household</span>`);
+    if (op.evicts) t.push(`<span class="tag cost">evicts a tenant</span>`);
     if (op.sell) t.push(`<span class="tag money">${op.sell==='cost'?'sell at cost':'sell → cash'}</span>`);
     if (op.heat) t.push(`<span class="tag ${op.heat<0?'money':'heat'}">${op.heat<0?'':'+'}${op.heat} heat</span>`);
     if (op.infl) t.push(`<span class="tag infl">+${op.infl} infl</span>`);
+    if (op.strain) t.push(`<span class="tag heat">+tenant strain</span>`);
     return t.join('');
 }
 function opAvailable(op){
@@ -1031,13 +1062,14 @@ function meetsNeed(need){
    a refresh — repaints in-progress departures instead of wiping them. */
 let _leaving = {};
 function makeTenant(){
-    const name = makeName();
+    const id = makeName();
     const rent = 420 + Math.floor(Math.random()*10)*35;
     const used = (state.featured||[]).map(t=>t && t.situation);
     let sit, tries = 0;
     do { sit = pick(T_SITUATION); tries++; } while (used.indexOf(sit) !== -1 && tries < 12);
-    return { name, job:pick(T_JOB), rent, strain: 12 + Math.floor(Math.random()*16), situation: sit,
-             skin: pick(SKINS), hair: pick(HAIRS), hairCol: pick(HAIRCOLS) };
+    return { name:id.name, eth:id.eth, job:pick(T_JOB), rent, strain: 12 + Math.floor(Math.random()*16), situation: sit,
+             skin: pick(SKIN_BY_ETH[id.eth] || SKIN_BY_ETH.euro), hair: pick(HAIRS),
+             hairCol: pick(HAIRCOL_BY_ETH[id.eth] || HAIRCOL_BY_ETH.euro), faceV: FACE_V };
 }
 function syncTenants(){
     state.tenants = baseTenants();
@@ -1183,11 +1215,24 @@ function doOperation(op, e){
     if (op.id === 'ignoreHealthy') state.violations++;
     if (op.id === 'inventFee') state.feesInvented++;
     if (op.evicts){ state.evictions++; evictSomeone(); }
-    if (op.removesHousehold){ state.extraUnits = Math.max(state.extraUnits-1, -baseTenantsFromProps()+1); }
-    if (op.sell){ const sc = sellTopProperty(op.sell === 'cost'); if (sc){ fx('+'+money(sc), 'pos', e); flashCash(false); } }
+    if (op.removesHousehold) airbnbConversion();
+    if (op.sell){
+        const sc = sellTopProperty(op.sell === 'cost');
+        if (sc){ fx('+'+money(sc), 'pos', e); flashCash(false); }
+        if (_lastSold && _lastSold.cash) toast(`Sold a ${_lastSold.name} for ${money(_lastSold.cash)}. Someone else's problem now.`, 'good');
+    }
     if (op.fhb){ state.fhbSales++; checkRedemption(); }
 
-    if (op.strain) state.featured.forEach(t=> t.strain = clamp(t.strain + op.strain, 0, 100));
+    if (op.strain){
+        state.featured.forEach(t=> t.strain = clamp(t.strain + op.strain, 0, 100));
+        // an optimisation that pins a tenant to the brink can price them out — same as a squeeze
+        const bi = state.featured.findIndex((t,i)=> t && t.strain >= 100 && !_leaving[i]);
+        if (bi >= 0){ const t = state.featured[bi];
+            tenantExits(bi, 'Priced out',
+                `${t.name} (${t.job}) couldn't make the new rent and moved on. A void, a re-let, a fresh listing at +12%.`,
+                { cost: 2500 + state.tenants*90, heat: 8, toast: `${t.name} was priced out — moved on. Voids and re-lets aren't free.` });
+        }
+    }
 
     if (op.news) addNews(op.news(state), op.heat < 0 ? 'good' : 'bad');
     blip(op.heat < 0 ? 320 : 200);
@@ -1200,6 +1245,7 @@ function doOperation(op, e){
    appreciation, only what actually accrued while you held it); 'cost' sells at the
    price you paid (you forgo the gain). Because a fresh purchase banks its basis at
    today's index, an immediate re-sale nets ≈0 — no buy-then-flip arbitrage. */
+let _lastSold = null;
 function sellTopProperty(atCost){
     let best = 0, id = null;
     PROPERTIES.forEach(p=>{ if (state.properties[p.id].count>0 && p.price>best){ best=p.price; id=p.id; } });
@@ -1215,6 +1261,7 @@ function sellTopProperty(atCost){
     state.debt = Math.max(0, state.debt - loanShare);
     if (!p.newBuild) state.dtiDebt = Math.max(0, state.dtiDebt - loanShare);
     state.money += cashOut;
+    _lastSold = { name: p.name, cash: cashOut };
     return cashOut;
 }
 
@@ -1250,6 +1297,20 @@ function evictSomeone(){
     tenantExits(idx, 'Evicted · 90-day notice',
         `${t.name} (${t.job}) served a 90-day no-cause notice — no reason required. Re-let at market by Friday.`,
         { toast: `${t.name} evicted — no reason required. That's the product.` });
+}
+
+/* Convert-to-Airbnb: one long-term household is turfed so the flat can go short-stay.
+   Show it happen (a named tenant leaves), then drop the aggregate household count —
+   so the op's whole premise ("a family, replaced by a bucks' party") is visible, not
+   an invisible counter tweak. */
+function airbnbConversion(){
+    state.extraUnits = Math.max(state.extraUnits - 1, -baseTenantsFromProps() + 1);
+    if (state.featured.length === 0) return;
+    const idx = Math.floor(Math.random() * state.featured.length);
+    const t = state.featured[idx];
+    tenantExits(idx, 'Flipped to short-stay',
+        `${t.name} (${t.job}) came home to a lockbox and a cleaning roster — the flat's a holiday rental now. A family, replaced by a bucks' party from Ballarat.`,
+        { toast: `${t.name}'s home is an Airbnb now. Five stars, would evict again.` });
 }
 
 function squeezeTenant(idx, e){
@@ -1963,6 +2024,8 @@ function flashCash(neg){
 }
 function toast(text, cls){
     const layer = $('toast-layer');
+    // cap the stack so a burst of unlocks/phase-ups doesn't wall off the screen
+    while (layer.children.length >= 3) layer.removeChild(layer.firstChild);
     const t = document.createElement('div');
     t.className = 'toast' + (cls?' '+cls:''); t.textContent = text;
     layer.appendChild(t);
