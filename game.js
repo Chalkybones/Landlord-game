@@ -1071,6 +1071,7 @@ function renderTenants(){
             <div class="tenant-rent">Rent <span class="rent-num">${money(t.rent)}/wk</span></div>
             <div class="strain-row"><span class="strain-cap">Can they afford it?</span><span class="strain-label" data-strainlabel></span></div>
             <div class="strain-meter"><div class="strain-fill" data-strain></div></div>
+            <div class="tenant-stakes">Each raise +cash, but pushes their strain up &amp; adds 🔥 Scrutiny. Max the bar and they're <b>priced out</b> — you pay the void.</div>
             <button class="tenant-btn" data-squeeze>Raise the rent 💢</button>`;
         wrap.appendChild(card);
         card.querySelector('[data-squeeze]').addEventListener('click', (e)=> squeezeTenant(idx, e));
@@ -1344,7 +1345,11 @@ function addHeat(delta, e){
     if (!delta) return;
     state.heat = clamp(state.heat + delta, 0, CFG.HEAT_MAX);
     if (state.heat >= 25) state._everHot = true;         // unlocks Politics for good
-    if (delta > 0) dossierNudge(delta * 0.22);          // every bit of scrutiny feeds her file
+    if (delta > 0){
+        dossierNudge(delta * 0.22);                      // every bit of scrutiny feeds her file
+        pokeScrutiny();                                  // make the meter visibly react to the squeeze
+        if (e) teachHeat();                              // first player-caused heat → explain the cost
+    }
     if (e && delta > 0) fx('+'+Math.round(delta)+' heat', 'heat', e, 34);
     if (e && delta < 0) fx(Math.round(delta)+' heat', 'infl', e, 34);
 }
@@ -2010,9 +2015,41 @@ function modalHelp(){
         <h1>The loop 🔁</h1>
         <p><b>1. Buy on leverage.</b> You don't pay cash for houses — you put down a <b>deposit</b> (investors ~35%) and the bank lends the rest as a mortgage. The debt costs weekly interest, so cheap provincial stock earns, while Auckland &amp; prestige homes <span style="color:var(--red-dark)">bleed cash</span> — you buy those for the capital gain.</p>
         <p><b>2. The bank is the game.</b> It lends up to <b>7× your income</b>, counting ~78% of your rent — so every rent rise unlocks more borrowing. (A first-home buyer gets 6× and counts none of it. That's the joke, and the mechanic.) New builds dodge the limits entirely.</p>
-        <p><b>3. Squeeze (the 💸 Squeeze tab).</b> Raise rents and invent fees for cash — and borrowing power. Every squeeze raises <span style="color:#b25a15;font-weight:700">Scrutiny</span>.</p>
-        <p><b>4. Buy Influence (Politics) &amp; hire Services.</b> Turn cash into political capital to spike stories and rewrite the rules. Services are mostly <b>weekly hires</b> — worth it only once they earn their keep. Watch the OCR — a rate hike lifts everyone's mortgage and can trigger the <b>Market Correction</b>.</p>
+        <p><b>3. Squeeze for cash — but it costs you Scrutiny.</b> Raising rents, inventing fees, ignoring standards and evicting all pay <i>now</i> and unlock borrowing — but each one adds <span style="color:#e8a84a;font-weight:700">Public Scrutiny 🔥</span> (the meter up top) and feeds <b>Fiona Vane's dossier</b>. Push a tenant's rent too far and they're <b>priced out</b> — you eat the void &amp; re-let, and heat spikes. <i>That's</i> the cost of squeezing.</p>
+        <p><b>4. Cool the heat with Influence.</b> Turn cash into <span style="color:var(--gold);font-weight:700">Political Influence 🏛️</span> (Politics tab) and spend it to Spike the Story, launder your reputation, or rewrite the law. Hire <b>Services</b> (mostly weekly) to squeeze harder for less heat. Tap the little <b>ⓘ</b> on the Scrutiny and Influence tiles any time for a refresher.</p>
+        <p><b>5. Win, or get caught.</b> Let Scrutiny redline — or let Vane's file hit 100% — and the <b>Exposé</b> ends your run. Over-leverage into a rate hike and the <b>Market Correction</b> bankrupts you. Climb to the top and bank <b>500 influence</b> to seize the Kāinga Ora board and become <b>Minister of Housing</b>. (There's a secret ending for playing clean, too.)</p>
     `, [{ label:'Let\'s ruin some lives', cls:'primary', fn:()=> closeModal() }]);
+}
+/* ---- plain-language explainers for the two systems players ask about most ---- */
+function scrutinyExplainer(){
+    showModal(`
+        <div class="modal-kicker">Public Scrutiny 🔥</div>
+        <h1>Your only real risk</h1>
+        <p><b>What raises it:</b> every rent rise, invented fee, ignored standard and no-cause eviction adds heat — the nastier the move, the bigger the spike. Watch the meter jump each time you squeeze.</p>
+        <p><b>Why it matters:</b> heat cools slowly on its own, but while it's high it feeds <b>Fiona Vane's dossier</b>. Fill her file to <b>100%</b> and she <b>publishes</b> — a scrutiny bomb. Sit at the top of the red for three weeks and the <b>Exposé</b> drops: your run is over.</p>
+        <p><b>How to cool it:</b> spend <b>Political Influence</b> in the 🏛️ Politics tab — Spike the Story, launder your reputation, or rewrite the law. Or just ease off the squeeze and let it decay.</p>
+        <p style="color:var(--muted);font-style:italic;">Greed is free — until it isn't. Scrutiny is the bill.</p>
+    `, [{ label:'Got it', cls:'primary', fn:()=> closeModal() }]);
+}
+function influenceExplainer(){
+    showModal(`
+        <div class="modal-kicker">Political Influence 🏛️</div>
+        <h1>The get-out-of-jail currency</h1>
+        <p><b>What it is:</b> your pull with the people who write the rules — worth more than cash once the heat is on.</p>
+        <p><b>How to earn it:</b> in the 🏛️ Politics tab — donate to parties, grease a consent, take Landlord of the Year. A <b>Lobbyist</b> on retainer (Services) also earns you influence every time you squeeze.</p>
+        <p><b>What to spend it on:</b> cooling <b>Public Scrutiny</b> (Spike the Story), permanently softening the rules — and the win itself: bank <b>500</b> and seize the Kāinga Ora board to become <b>Minister of Housing</b>.</p>
+        <p style="color:var(--muted);font-style:italic;">Cash buys houses. Influence buys immunity.</p>
+    `, [{ label:'Got it', cls:'primary', fn:()=> closeModal() }]);
+}
+function teachHeat(){
+    if (state.onceUsed.taughtHeat) return;
+    state.onceUsed.taughtHeat = true;
+    setTimeout(scrutinyExplainer, 280);   // fires right after the player's first squeeze
+}
+function pokeScrutiny(){
+    const tile = document.querySelector('.scrutiny-tile'); if (!tile) return;
+    tile.classList.remove('poke'); void tile.offsetWidth; tile.classList.add('poke');
+    setTimeout(()=>{ if (tile) tile.classList.remove('poke'); }, 620);
 }
 
 /* =============================================================== SHARE */
@@ -2269,6 +2306,14 @@ function refresh(){
 
     $('influence').textContent = fmt(state.influence);
     $('influence-title').textContent = influenceTitle();
+    const infFoot = $('influence-foot');
+    if (infFoot){
+        infFoot.textContent = state.influence < 40
+            ? 'Earn it in 🏛️ Politics — donate, bribe, lobby.'
+            : (state.influence < 500
+                ? 'Spend it in 🏛️ Politics to Spike the Story & cool Scrutiny. Bank 500 to win.'
+                : 'You can seize the Kāinga Ora board now — become Minister in 🏛️ Politics.');
+    }
 
     // bank strip
     const room = borrowable();
@@ -2348,6 +2393,11 @@ function setupEvents(){
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
     const em = $('empire-map'); if (em) em.addEventListener('click', (e)=>{ const h = e.target.closest && e.target.closest('.ehouse[data-house]'); if (h) openHouseModal(); });
+    document.querySelectorAll('[data-explain]').forEach(b=> b.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if (b.dataset.explain === 'scrutiny') scrutinyExplainer();
+        else if (b.dataset.explain === 'influence') influenceExplainer();
+    }));
     $('modal-overlay').addEventListener('click', (e)=>{ if (e.target === $('modal-overlay') && !state.ended && !_dilemmaOpen) closeModal(); });
     document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !state.ended && !_dilemmaOpen) closeModal(); });
 }

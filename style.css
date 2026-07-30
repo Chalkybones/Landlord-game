@@ -872,3 +872,29 @@ body.redline::after {
     .empire-legend .empire-tap { margin-left: 0; width: 100%; }
     .hv-avatar { width: 60px; height: 60px; }
 }
+
+/* ============================================================
+   CLARITY — info buttons, scrutiny reaction, tenant stakes
+   ============================================================ */
+.info-btn {
+    border: none; background: rgba(140,220,216,.14); color: var(--muted); cursor: pointer;
+    width: 17px; height: 17px; border-radius: 50%; font-size: .74em; line-height: 1; padding: 0;
+    display: inline-grid; place-items: center; vertical-align: middle; margin-left: 4px; transition: all .12s;
+    text-transform: none;
+}
+.info-btn:hover { background: var(--teal); color: #042021; transform: scale(1.12); }
+
+/* the Public Scrutiny tile flashes when a squeeze pushes heat up, so the
+   cause (your action) and the cost (scrutiny) are visibly connected */
+.scrutiny-tile.poke { animation: scrutPoke .62s ease; }
+@keyframes scrutPoke {
+    0%   { box-shadow: var(--shadow-sm); }
+    28%  { box-shadow: 0 0 0 2px rgba(255,91,91,.55), 0 8px 24px rgba(255,91,91,.4); }
+    100% { box-shadow: var(--shadow-sm); }
+}
+.scrutiny-tile.poke .meter-fill { animation: meterPoke .62s ease; }
+@keyframes meterPoke { 0%,100% { filter: brightness(1); } 40% { filter: brightness(1.6); } }
+
+.tenant-stakes { font-size: .68em; color: var(--muted-2); line-height: 1.35; margin: -1px 0 1px; }
+.tenant-stakes b { color: #ff8a6a; }
+@media (max-width: 700px) { .info-btn { width: 18px; height: 18px; } .tenant-stakes { font-size: .66em; } }
