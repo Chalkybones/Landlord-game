@@ -313,7 +313,7 @@ const T_SITUATION = [
     'Charged a "tenancy administration contribution." That\'s a letting fee. Those are illegal. Apparently it\'s "admin."',
     'The kids share a room with the dehumidifier. It has the best mattress.',
     'Applied against 40 others for this damp one-bed and "won." The prize is the damp one-bed.',
-    'The bank lends them 6× income for a house that costs 11×. The gap is officially called "patience."',
+    'To buy here they\'d need to borrow 11× their income. The bank stops at 6×. So they rent — from you.',
     'Paid a two-week pet bond for a budgie. The budgie now has stronger tenancy rights than they do.',
     'Wrote you a lovely email about the mould. You screenshotted it to your accountant.',
     'Priced out to Papakura; commutes 90 minutes each way to the job still stuck in town.',
@@ -327,7 +327,7 @@ const T_SITUATION = [
     'The letting agent called it "cosy." The thermometer calls it "a fridge."',
     'Moved cities for cheaper rent. The rent followed, like a debt with a car.',
     'Their bond has been "under review" for five months. So has their patience.',
-    'Told the flat was "warm and dry." It is legally required to be neither.',
+    'Told the flat was "warm and dry." The law requires both. It manages neither.',
     'Puts a towel under the door to keep the draught out and the damp in.',
     '"So lucky to get" a garage conversion with a curtain for a fourth wall.',
     'Rent went up again. Wages sent their apologies.',
@@ -2117,8 +2117,8 @@ function scrutinyExplainer(){
     showModal(`
         <div class="modal-kicker">Public Scrutiny 🔥</div>
         <h1>Your only real risk</h1>
-        <p><b>What raises it:</b> every rent rise, invented fee, ignored standard and no-cause eviction adds heat — the nastier the move, the bigger the spike. Watch the meter jump each time you squeeze.</p>
-        <p><b>Why it matters:</b> heat cools slowly on its own, but while it's high it feeds <b>Fiona Vane's dossier</b>. Fill her file to <b>100%</b> and she <b>publishes</b> — a scrutiny bomb. Sit at the top of the red for three weeks and the <b>Exposé</b> drops: your run is over.</p>
+        <p><b>What raises it:</b> every rent rise, invented fee, ignored standard and no-cause eviction adds <b>heat</b> — that's the little <b>+heat</b> tag on each move, and it's exactly what fills this <b>Public Scrutiny</b> meter. The nastier the move, the bigger the jump.</p>
+        <p><b>Why it matters:</b> the meter cools slowly on its own, but while it's high it feeds <b>Fiona Vane's dossier</b>. Fill her file to <b>100%</b> and she <b>publishes</b> — a scrutiny bomb. Sit at the top of the red for three weeks and the <b>Exposé</b> drops: your run is over.</p>
         <p><b>How to cool it:</b> spend <b>Political Influence</b> in the 🏛️ Politics tab — Spike the Story, launder your reputation, or rewrite the law. Or just ease off the squeeze and let it decay.</p>
         <p style="color:var(--muted);font-style:italic;">Greed is free — until it isn't. Scrutiny is the bill.</p>
     `, [{ label:'Got it', cls:'primary', fn:()=> closeModal() }]);
