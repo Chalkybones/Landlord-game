@@ -27,8 +27,9 @@ const CFG = {
     OFFLINE_WEEKS_CAP: 40,     // idle returns a modest welcome-back bump, never an economy-breaking windfall
     NEWS_COOLDOWN: 24,
     EVENT_COOLDOWN: 6,
-    DILEMMA_COOLDOWN: 38,       // min real seconds between interactive dilemmas
-    DILEMMA_PROB: 0.16,         // per-eligible-week chance one fires
+    DILEMMA_COOLDOWN: 52,       // min real seconds between interactive dilemmas
+    DILEMMA_PROB: 0.12,         // per-eligible-week chance one fires
+    DILEMMA_RECENT: 4,          // don't re-show any of the last N dilemmas (keeps them varied)
     SAVE_KEY: 'kiwiLandlordEmpire_v2',
     LEGACY_BONUS: 0.15,        // +15% permanent rent per Restructure
     // --- the bank ---
@@ -1484,6 +1485,7 @@ function rollEvent(){
     const pool = EVENTS.filter(ev => ev.tier <= tier && (!ev.cond || ev.cond()));
     if (pool.length === 0) return;
     pick(pool).run();
+    newsFlash();          // events happen TO you — pop it up so it isn't lost in the ticker
     refresh();
 }
 
@@ -1494,13 +1496,20 @@ function maybeDilemma(nowS){
     if (!$('modal-overlay').hidden) return false;      // never replace an open modal (intro/help/offline)
     if (nowS - (state._lastDilemma||0) < CFG.DILEMMA_COOLDOWN) return false;
     if (Math.random() > CFG.DILEMMA_PROB) return false;
-    const pool = DILEMMAS.filter(d =>
+    let pool = DILEMMAS.filter(d =>
         (!d.minPhase || phaseInfo().i >= d.minPhase) &&
         (!d.cond || d.cond()) &&
         !(d.once && state.onceUsed['dil_'+d.id]));
     if (!pool.length) return false;
+    // skip the handful most recently shown so repeats don't feel constant;
+    // only fall back to the full pool if everything eligible is "recent"
+    const recent = state._recentDil || [];
+    const fresh = pool.filter(d => recent.indexOf(d.id) === -1);
+    if (fresh.length) pool = fresh;
+    const chosen = pick(pool);
     state._lastDilemma = nowS;
-    openDilemma(pick(pool));
+    state._recentDil = [chosen.id, ...recent].slice(0, CFG.DILEMMA_RECENT);
+    openDilemma(chosen);
     return true;
 }
 function openDilemma(d){
@@ -1516,7 +1525,7 @@ function openDilemma(d){
             try { if (c.apply) c.apply(state); } catch(e){}
             if (c.ach) unlockAch(c.ach);
             if (d.once) state.onceUsed['dil_'+d.id] = true;
-            if (c.result) addNews(c.result, c.news || 'event');
+            if (c.result){ addNews(c.result, c.news || 'event'); if (!c.toast) newsFlash(); }  // show the outcome of your choice
             if (c.toast) toast(c.toast, c.toastCls || 'gold');
             blip(c.blip || 300);
             refresh();
@@ -1808,6 +1817,7 @@ function dossierTick(){
     if (ch > state._dossierChapter){
         state._dossierChapter = ch;
         addNews(DOSSIER_CHAPTERS[ch-1].news, 'bad');
+        newsFlash();                              // Vane escalating is a beat you should see
         if (ch >= 3) shake();
     } else if (ch < state._dossierChapter){
         state._dossierChapter = ch;               // you cooled her off
@@ -1950,6 +1960,7 @@ function doPrestige(){
 }
 
 /* =============================================================== NEWS */
+let _lastNewsItem = null;
 function addNews(text, kind){
     const feed = $('news-feed');
     const item = document.createElement('div');
@@ -1959,6 +1970,7 @@ function addNews(text, kind){
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > 24) feed.removeChild(feed.lastChild);
     pushTicker(text);
+    _lastNewsItem = { text, kind };   // remembered so a caller can surface it as a pop-up
     const newsTab = document.querySelector('.tab[data-tab="news"]');
     if (newsTab && !newsTab.classList.contains('active')){
         state._unread = (state._unread||0) + 1;
@@ -1966,6 +1978,17 @@ function addNews(text, kind){
         if (!b){ b = document.createElement('span'); b.className='badge'; newsTab.appendChild(b); }
         b.textContent = state._unread;
     }
+}
+/* Surface the most recent news item as a pop-up toast — for the consequential beats
+   (events, dilemma outcomes, the reporter escalating) that otherwise scroll past in
+   the ticker. Routine action feedback (cash floats, meter jumps) is left as-is. */
+function newsFlash(){
+    if (!_lastNewsItem) return;
+    const plain = _lastNewsItem.text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    if (!plain) return;
+    const cls = _lastNewsItem.kind === 'good' ? 'good' : (_lastNewsItem.kind === 'bad' ? 'bad' : 'event');
+    toast('📰 ' + plain, cls, 6000);
+    _lastNewsItem = null;
 }
 function renderNews(first){
     if (first){ $('news-feed').innerHTML = ''; addNews('Welcome to PortfolioMax™. Election-year wealth-building starts now. The bank is ready to lend you a life other people can\'t rent.', 'event'); }
@@ -2041,15 +2064,16 @@ function flashCash(neg){
     el.classList.add(cls);
     setTimeout(()=>{ if (el) el.classList.remove(cls); }, 520);
 }
-function toast(text, cls){
+function toast(text, cls, ms){
     const layer = $('toast-layer');
     // cap the stack so a burst of unlocks/phase-ups doesn't wall off the screen
     while (layer.children.length >= 3) layer.removeChild(layer.firstChild);
     const t = document.createElement('div');
     t.className = 'toast' + (cls?' '+cls:''); t.textContent = text;
     layer.appendChild(t);
-    setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.transition='all .3s'; }, 3200);
-    setTimeout(()=> t.remove(), 3600);
+    const hold = ms || 3200;                 // longer for news flashes (more to read)
+    setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.transition='all .3s'; }, hold);
+    setTimeout(()=> t.remove(), hold + 400);
 }
 let audioCtx = null;
 function blip(freq){
