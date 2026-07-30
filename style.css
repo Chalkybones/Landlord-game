@@ -163,22 +163,7 @@ body {
 .ticker-item { font-size: .8em; opacity: .9; color: #dcedeb; }
 .ticker-sep { opacity: .3; padding: 0 14px; font-size: .7em; }
 
-/* ---------- Nemesis: the reporter's dossier ---------- */
-.dossier-strip {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 10px 14px;
-    background: linear-gradient(90deg, rgba(176,136,224,.14), rgba(16,48,53,.85));
-    border: 1px solid var(--line); border-left: 4px solid var(--plum); border-radius: 12px;
-    transition: border-color .3s, background .3s;
-}
-.dossier-strip.hot { border-left-color: var(--red); background: linear-gradient(90deg, rgba(255,91,91,.2), rgba(16,48,53,.85)); animation: livepulse 1.4s ease-in-out infinite; }
-.dossier-avatar { font-size: 1.6em; flex-shrink: 0; }
-.dossier-body { flex: 1; min-width: 0; }
-.dossier-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.dossier-name { font-weight: 800; font-size: .92em; color: var(--head); }
-.dossier-pct { font-weight: 800; font-size: .82em; color: var(--red); flex-shrink: 0; }
-.dossier-meter { height: 7px; background: var(--inset); border-radius: 4px; overflow: hidden; margin: 5px 0 3px; }
-.dossier-fill { height: 100%; width: 0%; border-radius: 4px; background: linear-gradient(90deg, var(--plum), var(--red)); transition: width .4s; }
-.dossier-chapter { font-size: .76em; color: var(--muted); font-style: italic; }
+/* Fiona Vane's dossier now lives inside the Scrutiny tile (see .tile-dossier below) */
 
 /* ---------- Rap Sheet (achievements) ---------- */
 .rap-count { color: var(--muted); font-size: .9em; margin-top: -2px; }
@@ -614,7 +599,6 @@ body.redline::after {
     /* ticker / dossier / rap-sheet: compact for phones */
     .ticker { margin-bottom: 10px; padding: 6px 10px; }
     .ticker-item { font-size: .74em; }
-    .dossier-strip { margin-bottom: 10px; padding: 9px 11px; }
     .ach-grid { grid-template-columns: 1fr; }
 
     /* objective HUD: wrap so win/lose conditions read in full (no clipped scroll);
@@ -919,3 +903,26 @@ body.redline::after {
 .hint-x:hover { opacity: 1; color: var(--red); }
 body.hints-off .panel-hint:not(#empire-stat),
 body.hints-off .tenant-stakes { display: none; }
+
+/* Fiona Vane's dossier, folded into the Scrutiny tile (one fewer top strip) */
+.tile-dossier { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.td-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.td-name { font-size: .72em; font-weight: 800; color: #c6a6ea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-dossier .dossier-pct { font-size: .76em; font-weight: 800; color: var(--red); flex-shrink: 0; }
+.tile-dossier .dossier-meter { height: 6px; background: var(--inset); border-radius: 4px; overflow: hidden; }
+.tile-dossier .dossier-fill { height: 100%; width: 0%; border-radius: 4px; background: linear-gradient(90deg, var(--plum), var(--red)); transition: width .4s; }
+.tile-dossier .dossier-chapter { font-size: .68em; color: var(--muted); font-style: italic; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tile-dossier.hot { animation: livepulse 1.4s ease-in-out infinite; }
+.tile-dossier.hot .dossier-fill { filter: brightness(1.2); }
+
+/* compact market-speed pill (slimmer, less of a chunky bar) */
+.speed-controls { padding: 5px 8px; gap: 4px; }
+.speed-caption { font-size: .64em; }
+.speed-btn { padding: 5px 11px; font-size: .78em; }
+@media (max-width: 700px) {
+    .tile-dossier { margin-top: 7px; padding-top: 7px; }
+    .tile-dossier .dossier-chapter { display: none; }   /* keep the mobile stat tile compact */
+    .td-name { font-size: .64em; }
+    .speed-btn { padding: 6px 8px; }
+}
