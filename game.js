@@ -1764,8 +1764,8 @@ function renderTicker(){
     // to the real track width and scroll noticeably slower on small screens.
     const half = track.scrollWidth / 2;                       // px travelled per -50% loop
     const mobile = window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
-    const pxPerSec = mobile ? 26 : 48;
-    track.style.animationDuration = Math.max(30, half / pxPerSec).toFixed(1) + 's';
+    const pxPerSec = mobile ? 36 : 54;   // balance: not the old ~50 (too fast) nor 26 (too slow)
+    track.style.animationDuration = Math.max(26, half / pxPerSec).toFixed(1) + 's';
 }
 
 /* =============================================================== ENDINGS */
@@ -2025,7 +2025,10 @@ function modalHelp(){
         <p><b>3. Squeeze for cash — but it costs you Scrutiny.</b> Raising rents, inventing fees, ignoring standards and evicting all pay <i>now</i> and unlock borrowing — but each one adds <span style="color:#e8a84a;font-weight:700">Public Scrutiny 🔥</span> (the meter up top) and feeds <b>Fiona Vane's dossier</b>. Push a tenant's rent too far and they're <b>priced out</b> — you eat the void &amp; re-let, and heat spikes. <i>That's</i> the cost of squeezing.</p>
         <p><b>4. Cool the heat with Influence.</b> Turn cash into <span style="color:var(--gold);font-weight:700">Political Influence 🏛️</span> (Politics tab) and spend it to Spike the Story, launder your reputation, or rewrite the law. Hire <b>Services</b> (mostly weekly) to squeeze harder for less heat. Tap the little <b>ⓘ</b> on the Scrutiny and Influence tiles any time for a refresher.</p>
         <p><b>5. Win, or get caught.</b> Let Scrutiny redline — or let Vane's file hit 100% — and the <b>Exposé</b> ends your run. Over-leverage into a rate hike and the <b>Market Correction</b> bankrupts you. Climb to the top and bank <b>500 influence</b> to seize the Kāinga Ora board and become <b>Minister of Housing</b>. (There's a secret ending for playing clean, too.)</p>
-    `, [{ label:'Let\'s ruin some lives', cls:'primary', fn:()=> closeModal() }]);
+    `, [
+        { label: state.hintsOff ? '💡 Show helper tips' : '💡 Hide helper tips', cls:'ghost', fn:()=>{ setHints(!!state.hintsOff); closeModal(); } },
+        { label:'Let\'s ruin some lives', cls:'primary', fn:()=> closeModal() },
+    ]);
 }
 /* ---- plain-language explainers for the two systems players ask about most ---- */
 function scrutinyExplainer(){
@@ -2289,6 +2292,28 @@ function setCoach(on){
     toast(on ? '🎯 Advisor back on.' : 'Advisor hidden — tap 🎯 up top to bring it back.', on ? 'good' : 'event');
 }
 
+/* ---- dismissible helper tips: the panel subtitles that explain each screen.
+   Handy at first, clutter once you know the game. One toggle hides them all
+   (the live Empire stat and the ⓘ explainers stay). Restored from the ? menu. ---- */
+function applyHints(){ document.body.classList.toggle('hints-off', !!state.hintsOff); }
+function setHints(on){
+    state.hintsOff = !on;
+    applyHints();
+    saveGame(true);
+    toast(on ? '💡 Helper tips back on.' : 'Helper tips hidden — turn them back on in the ? menu.', on ? 'good' : 'event');
+}
+function injectHintClosers(){
+    document.querySelectorAll('.panel-hint').forEach(h=>{
+        if (h.id === 'empire-stat') return;                  // that's a live stat, not a tip
+        if (h.querySelector('.hint-x')) return;
+        const x = document.createElement('button');
+        x.className = 'hint-x'; x.type = 'button'; x.textContent = '×';
+        x.title = 'Hide helper tips'; x.setAttribute('aria-label', 'Hide helper tips');
+        x.addEventListener('click', (e)=>{ e.stopPropagation(); setHints(false); });
+        h.appendChild(x);
+    });
+}
+
 /* =============================================================== REFRESH */
 function refresh(){
     $('money').textContent = money(state.money);
@@ -2437,6 +2462,8 @@ function init(){
     for (let i=0;i<5;i++){ const h = _stripHtml(pickHeadline()); if (_tickerItems.indexOf(h) === -1) _tickerItems.push(h); }
     renderTicker();
     setupEvents();
+    injectHintClosers();
+    applyHints();
     setSpeedButtons();
     setBuyQty(state.buyQty || 1);
     $('mute-btn').textContent = state.muted ? '🔇' : '🔊';

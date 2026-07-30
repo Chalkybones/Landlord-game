@@ -909,3 +909,13 @@ body.redline::after {
 #coach-btn.off { opacity: .5; }
 #coach-btn:not(.off) { background: rgba(242,192,74,.16); border-color: rgba(242,192,74,.34); }
 @media (max-width: 700px) { .coach-close { width: 30px; height: 30px; } }
+
+/* dismissible helper tips (panel subtitles) */
+.hint-x {
+    border: none; background: transparent; color: var(--muted-2); cursor: pointer;
+    font-size: 1.15em; line-height: 1; padding: 0 3px; margin-left: 5px; vertical-align: baseline;
+    opacity: .55; transition: opacity .12s, color .12s;
+}
+.hint-x:hover { opacity: 1; color: var(--red); }
+body.hints-off .panel-hint:not(#empire-stat),
+body.hints-off .tenant-stakes { display: none; }
