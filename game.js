@@ -1750,7 +1750,7 @@ function pushTicker(text){
     const t = _stripHtml(text); if (!t) return;
     _tickerItems.unshift(t);
     if (_tickerItems.length > 12) _tickerItems.pop();
-    if (now() - _lastTickerRender > 2500){ _lastTickerRender = now(); renderTicker(); }
+    if (now() - _lastTickerRender > 20000){ _lastTickerRender = now(); renderTicker(); }
 }
 function renderTicker(){
     const wrap = $('ticker'), track = $('ticker-track'); if (!wrap || !track) return;
@@ -1758,7 +1758,14 @@ function renderTicker(){
     wrap.hidden = false;
     const seq = _tickerItems.map(t=>`<span class="ticker-item">${t}</span>`).join('<span class="ticker-sep">◆</span>');
     track.innerHTML = seq + '<span class="ticker-sep">◆</span>' + seq + '<span class="ticker-sep">◆</span>';
-    track.style.animationDuration = Math.max(34, _tickerItems.length * 7) + 's';
+    // Constant, readable scroll SPEED (px/sec) rather than a fixed duration: a fixed
+    // duration made a longer headline queue scroll faster, and a narrow phone shows each
+    // headline for a fraction of the time a wide desktop does — so we scale the duration
+    // to the real track width and scroll noticeably slower on small screens.
+    const half = track.scrollWidth / 2;                       // px travelled per -50% loop
+    const mobile = window.matchMedia && window.matchMedia('(max-width: 700px)').matches;
+    const pxPerSec = mobile ? 26 : 48;
+    track.style.animationDuration = Math.max(30, half / pxPerSec).toFixed(1) + 's';
 }
 
 /* =============================================================== ENDINGS */
