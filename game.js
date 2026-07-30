@@ -2293,7 +2293,35 @@ function selectTab(name){
     const panel = document.querySelector(`.tab-panel[data-panel="${name}"]`);
     if (panel) panel.classList.add('active');
     if (name === 'news'){ state._unread = 0; const b = tabBtn.querySelector('.badge'); if (b) b.remove(); }
+    state.visited = state.visited || {}; state.visited[name] = true;   // clears any "new here" glow
+    updateTabCues();
     scrollToEl('.tab-body');
+}
+/* a small glowing dot on whichever tab wants your attention — works even with the
+   advisor dismissed. Three levels map to the game's colour language:
+   teal = something new / a first action, gold = your win is claimable, red = danger. */
+function tabCueLevel(key){
+    const s = state;
+    if (key === 'empire' || key === 'news') return null;      // news has its own unread badge
+    if (key === 'politics'){                                  // danger + endgame outrank all
+        if (heatTier().i >= 3) return 'urgent';
+        if (phaseInfo().i >= 4 && s.influence >= 500) return 'ready';
+    }
+    if (key === 'portfolio') return propertyCount() === 0 ? 'nudge' : null;     // always-visible: only "no rentals yet"
+    if (key === 'operations' && s.unlocked.operations && s.rentRaises === 0) return 'nudge';  // first squeeze
+    if (s.unlocked[key] && !(s.visited && s.visited[key])) return 'nudge';      // freshly unlocked, unopened
+    return null;
+}
+function updateTabCues(){
+    document.querySelectorAll('#tabs .tab').forEach(tab=>{
+        tab.classList.remove('needs-attention','cue-ready','cue-urgent');
+        if (state.ended || tab.hidden || tab.classList.contains('active')) return;
+        const lvl = tabCueLevel(tab.dataset.tab);
+        if (!lvl) return;
+        tab.classList.add('needs-attention');
+        if (lvl === 'urgent') tab.classList.add('cue-urgent');
+        else if (lvl === 'ready') tab.classList.add('cue-ready');
+    });
 }
 function scrollToEl(sel){
     const el = document.querySelector(sel); if (!el) return;
@@ -2479,6 +2507,7 @@ function refresh(){
     updatePrestigeButton();
     checkAchievements();
     updateUnlocks();
+    updateTabCues();
     updateCoach();
 }
 
