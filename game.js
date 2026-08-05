@@ -204,7 +204,7 @@ const SERVICES = [
     { id:'compliance', emoji:'📋', name:'Healthy Homes "Compliance" Consultant', kind:'hire',
       fee:{flat:700}, signup:5000,
       does:'Signs off the Healthy Homes standards — mandatory since July 2025 — that you are actively ignoring, so inspections bounce off.',
-      live:'Ignore-standards heat halved', tag:'Ignore-standards heat ×0.5',
+      live:'Ignore-standards scrutiny halved', tag:'Ignore-standards scrutiny ×0.5',
       desc:'They certify your compliance with the rules you break. The folder is thick, professional, and completely fictional.' },
     { id:'accomSupp', emoji:'🏦', name:'Accommodation Supplement Harvester', kind:'hire',
       fee:{pctRent:0.05}, signup:15000, need:{phase:1},
@@ -214,12 +214,12 @@ const SERVICES = [
     { id:'tribunal', emoji:'📚', name:'Tenancy Tribunal Retainer', kind:'hire',
       fee:{flat:1200}, signup:8000,
       does:'A lawyer on retainer fights every Tenancy Tribunal case for you — and usually wins on a technicality.',
-      live:'Eviction heat halved', tag:'Eviction heat ×0.5',
+      live:'Eviction scrutiny halved', tag:'Eviction scrutiny ×0.5',
       desc:'Renters United built a free tool to fight you (TenancyHelp). You built a lawyer who bills by the comma. Guess who wins.' },
     { id:'astroturf', emoji:'📣', name:'Astroturf "Renters\' Group"', kind:'hire',
       fee:{flat:2200}, signup:15000, need:{phase:2},
       does:'A "grassroots" tenant voice that mysteriously agrees with landlords, quoted in the press whenever you\'re under fire.',
-      live:'Squeeze scrutiny ×0.75', tag:'Squeeze heat ×0.75',
+      live:'Squeeze scrutiny ×0.75', tag:'Squeeze scrutiny ×0.75',
       desc:'The grass is plastic, the roots are yours, and the quarterly press releases write themselves. So does the outrage.' },
     { id:'prFirm', emoji:'📰', name:'PR Crisis Firm on Retainer', kind:'hire',
       fee:{flat:3000}, signup:20000, need:{phase:2},
@@ -469,6 +469,7 @@ function defaultState() {
         muted: false,
         evictions: 0, rentRaises: 0, violations: 0, bribes: 0,
         feesInvented: 0, fhbSales: 0, heatMaxStreak: 0, ended: false,
+        equityReleases: 0,         // times the player has drawn equity down (first one gets an explainer)
         achievements: {},          // id -> true (Rap Sheet)
         dossier: 0,                // the reporter's investigation, 0–100
         _spree: 0,                 // recent squeeze intensity (anti-spam: feeds the dossier)
@@ -630,8 +631,22 @@ function buyBlockReason(prop){
     const dep = Math.floor(st.cost * prop.deposit);
     const loan = st.cost - dep;
     if (state.money < dep) return `Need ${money(dep)} deposit`;
-    if (!prop.newBuild && loan > dtiHeadroom()) return `Bank won't lend — raise your income`;
+    if (!prop.newBuild && loan > dtiHeadroom()) return `Bank won't lend that much — raise rents to lift your income`;
     return null;
+}
+/* If cash is short of one deposit but the bank's headroom covers the gap (and the
+   mortgage itself still fits the DTI test after the drawdown), the purchase is one
+   equity release away — offer both as a single move on the buy button. */
+function equityBuyPlan(p){
+    if (state.buyQty !== 1 || propertyCount() < p.unlock) return null;
+    const dep = Math.floor(p.price * p.deposit);
+    const loan = p.price - dep;
+    const shortfall = dep - Math.floor(state.money);
+    if (shortfall <= 0) return null;
+    const draw = Math.min(borrowable(), shortfall + 500);   // a small buffer over the gap
+    if (draw < shortfall) return null;
+    if (!p.newBuild && dtiHeadroom() - draw < loan) return null;
+    return { draw };
 }
 
 /* ============================================================ SAVE / LOAD */
@@ -894,7 +909,7 @@ function buildProperties(){
                     <span>Price <b data-price></b></span>
                     <span>Deposit <b data-dep></b></span>
                     <span>Net <b data-net></b>/wk</span>
-                    <span>+<b>${p.units}</b> hh</span>
+                    <span>+<b>${p.units}</b> household${p.units>1?'s':''}</span>
                 </div>
                 <div class="lock-note" data-lock hidden></div>
                 <button class="buy-btn" data-buy>Buy</button>
@@ -918,7 +933,7 @@ function buildProperties(){
             const lock = card.querySelector('[data-lock]');
             if (!unlocked){
                 lock.hidden = false;
-                lock.textContent = `🔒 Unlocks at ${p.unlock} properties owned`;
+                lock.textContent = `🔒 Unlocks at ${p.unlock} properties — you own ${propertyCount()}`;
                 btn.disabled = true; btn.textContent = 'Locked';
                 return;
             }
@@ -926,11 +941,16 @@ function buildProperties(){
             const plan = plannedBuy(p);
             if (state.buyQty === 'max'){
                 btn.disabled = plan.n < 1;
+                btn.classList.remove('equity-buy');
                 btn.textContent = plan.n >= 1 ? `Buy ×${plan.n} — ${money(plan.deposit)} down` : (buyBlockReason(p) || 'Unavailable');
             } else {
                 const ok = plan.n >= state.buyQty;
-                btn.disabled = !ok;
-                btn.textContent = ok ? `Buy ×${state.buyQty} — ${money(plan.deposit)} down` : (buyBlockReason(p) || 'Unavailable');
+                const eq = ok ? null : equityBuyPlan(p);   // deposit short, but the bank would cover it
+                btn.disabled = !ok && !eq;
+                btn.classList.toggle('equity-buy', !!eq);
+                btn.textContent = ok ? `Buy ×${state.buyQty} — ${money(plan.deposit)} down`
+                    : eq ? `🏦 Release ${money(eq.draw)} equity & buy`
+                    : (buyBlockReason(p) || 'Unavailable');
             }
         });
     });
@@ -965,7 +985,7 @@ function opTags(op){
     if (op.removesHousehold) t.push(`<span class="tag cost">−1 household</span>`);
     if (op.evicts) t.push(`<span class="tag cost">evicts a tenant</span>`);
     if (op.sell) t.push(`<span class="tag money">${op.sell==='cost'?'sell at cost':'sell → cash'}</span>`);
-    if (op.heat) t.push(`<span class="tag ${op.heat<0?'money':'heat'}">${op.heat<0?'':'+'}${op.heat} heat</span>`);
+    if (op.heat) t.push(`<span class="tag ${op.heat<0?'money':'heat'}">${op.heat<0?'':'+'}${op.heat} scrutiny</span>`);
     if (op.infl) t.push(`<span class="tag infl">+${op.infl} infl</span>`);
     if (op.strain) t.push(`<span class="tag heat">+tenant strain</span>`);
     return t.join('');
@@ -1061,8 +1081,8 @@ function buildPolitics(){
             const tags = [`<span class="tag cost">−${money(cost)}</span>`];
             if (pa.spendInfl) tags.push(`<span class="tag infl">−${pa.spendInfl} infl</span>`);
             if (pa.infl) tags.push(`<span class="tag infl">+${pa.infl} infl</span>`);
-            if (pa.heat) tags.push(`<span class="tag money">${pa.heat} heat</span>`);
-            if (pa.permHeatDown) tags.push(`<span class="tag money">−15% future heat</span>`);
+            if (pa.heat) tags.push(`<span class="tag money">${pa.heat} scrutiny</span>`);
+            if (pa.permHeatDown) tags.push(`<span class="tag money">−15% future scrutiny</span>`);
             if (pa.ending) tags.push(`<span class="tag lock">WIN CONDITION</span>`);
             const gate = meetsNeed(pa.need);
             if (!gate.ok) tags.push(`<span class="tag lock">🔒 ${gate.why}</span>`);
@@ -1178,7 +1198,12 @@ function buyProperty(id, e){
     if (propertyCount() < p.unlock) return;
     const plan = plannedBuy(p);
     const need = state.buyQty === 'max' ? 1 : state.buyQty;
-    if (plan.n < need) return;
+    if (plan.n < need){
+        // cash short, but releasable equity covers the gap → do both as one move
+        const eq = equityBuyPlan(p);
+        if (eq) releaseEquity(e, eq.draw, ()=> buyProperty(id, e));
+        return;
+    }
 
     state.money -= plan.deposit;
     state.debt += plan.loan;
@@ -1195,17 +1220,40 @@ function buyProperty(id, e){
     refresh();
 }
 
-function releaseEquity(e){
+/* Draw the bank's headroom down as cash. `amount` caps the drawdown (the
+   release-&-buy button borrows only the gap); `after` runs once the money lands
+   (so that button can complete the purchase). First release gets an explainer —
+   players kept missing that this is a loan, not a windfall. */
+function releaseEquity(e, amount, after){
+    if (state.ended) return;
     const room = borrowable();
-    if (room < 1000) return;
-    state.money += room;
-    state.debt += room;
-    state.dtiDebt += room;   // owner drawdown counts against DTI
-    fx('+'+money(room), 'pos', e);
-    flashCash(false);
-    blip(240);
-    addNews(`Refinanced. Your houses earned more than you did, so you remortgaged them and pocketed ${money(room)} to buy another. This is called "wealth creation."`, 'event');
-    refresh();
+    const amt = Math.min(room, amount || room);
+    if (amt < 1000) return;
+    const doIt = ()=>{
+        state.money += amt;
+        state.debt += amt;
+        state.dtiDebt += amt;   // owner drawdown counts against DTI
+        state.equityReleases = (state.equityReleases||0) + 1;
+        fx('+'+money(amt), 'pos', e);
+        flashCash(false);
+        blip(240);
+        addNews(`Refinanced. Your houses earned more than you did, so you remortgaged them and pocketed ${money(amt)} to buy another. This is called "wealth creation."`, 'event');
+        refresh();
+        if (after) after();
+    };
+    if (!state.equityReleases){
+        showModal(`
+            <div class="modal-kicker">The bank, calling</div>
+            <h1>Release equity? 🏦</h1>
+            <p>Your portfolio's paper value has climbed, so the bank will re-lend you <b>${money(amt)}</b> against it — cash in your account today, no questions beyond "how much?"</p>
+            <p>It isn't income. It's <b>new mortgage debt</b>: it stacks on what you owe and quietly grows your weekly interest bill. Around here that's not a warning, it's a strategy — every rent rise lifts your borrowing power, and this button is where you collect it.</p>
+        `, [
+            { label:'Not yet', cls:'ghost', fn:()=> closeModal() },
+            { label:`Take the ${money(amt)}`, cls:'gold', fn:()=>{ closeModal(); doIt(); } },
+        ]);
+        return;
+    }
+    doIt();
 }
 
 function doOperation(op, e){
@@ -1441,8 +1489,8 @@ function addHeat(delta, e){
         pokeScrutiny();                                  // make the meter visibly react to the squeeze
         if (e) teachHeat();                              // first player-caused heat → explain the cost
     }
-    if (e && delta > 0) fx('+'+Math.round(delta)+' heat', 'heat', e, 34);
-    if (e && delta < 0) fx(Math.round(delta)+' heat', 'infl', e, 34);
+    if (e && delta > 0) fx('+'+Math.round(delta)+' scrutiny', 'heat', e, 34);
+    if (e && delta < 0) fx(Math.round(delta)+' scrutiny', 'infl', e, 34);
 }
 function addInfluence(delta, e){
     state.influence += delta;
@@ -1481,6 +1529,9 @@ function onWeek(){
     if (state.heat >= CFG.HEAT_MAX - 4){
         state.heatMaxStreak++;
         if (state.heatMaxStreak >= 3){ triggerEnding('expose'); return; }
+        // count it down out loud — a legible near-death beats a mystery game-over
+        toast(`🚨 Exposé drops in ${3 - state.heatMaxStreak} week${state.heatMaxStreak >= 2 ? '' : 's'} — cool the Scrutiny or it's over.`, 'bad');
+        shake();
     } else state.heatMaxStreak = 0;
     // an interactive "advisory" dilemma — the game pauses and asks you to choose.
     // (skipped on a week that already fired a scripted event, so they don't stack)
@@ -2138,9 +2189,9 @@ function modalHelp(){
         <div class="modal-kicker">How to build an empire</div>
         <h1>The loop 🔁</h1>
         <p><b>1. Buy on leverage.</b> You don't pay cash for houses — you put down a <b>deposit</b> (investors ~35%) and the bank lends the rest as a mortgage. The debt costs weekly interest, so cheap provincial stock earns, while Auckland &amp; prestige homes <span style="color:var(--red-dark)">bleed cash</span> — you buy those for the capital gain.</p>
-        <p><b>2. The bank is the game.</b> It lends up to <b>7× your income</b>, counting ~78% of your rent — so every rent rise unlocks more borrowing. (A first-home buyer gets 6× and counts none of it. That's the joke, and the mechanic.) New builds dodge the limits entirely.</p>
+        <p><b>2. The bank is the game.</b> It lends up to <b>7× your income</b>, counting ~78% of your rent — so every rent rise unlocks more borrowing. (A first-home buyer gets 6× and counts none of it. That's the joke, and the mechanic.) New builds dodge the limits entirely. When values rise, hit <b>🏦 Release equity</b> (top of the Buy tab, or the gold line on your Cash tile) to pull the paper gain out as spendable cash — it's new debt, but that's never stopped anyone.</p>
         <p><b>3. Squeeze for cash — but it costs you Scrutiny.</b> Raising rents, inventing fees, ignoring standards and evicting all pay <i>now</i> and unlock borrowing — but each one adds <span style="color:#e8a84a;font-weight:700">Public Scrutiny 🔥</span> (the meter up top) and feeds <b>Fiona Vane's dossier</b>. Push a tenant's rent too far and they're <b>priced out</b> — you eat the void &amp; re-let, and heat spikes. <i>That's</i> the cost of squeezing.</p>
-        <p><b>4. Cool the heat with Influence.</b> Turn cash into <span style="color:var(--gold);font-weight:700">Political Influence 🏛️</span> (Politics tab) and spend it to Spike the Story, launder your reputation, or rewrite the law. Hire <b>Services</b> (mostly weekly) to squeeze harder for less heat. Tap the little <b>ⓘ</b> on the Scrutiny and Influence tiles any time for a refresher.</p>
+        <p><b>4. Cool the Scrutiny with Influence.</b> Turn cash into <span style="color:var(--gold);font-weight:700">Political Influence 🏛️</span> (Politics tab) and spend it to Spike the Story, launder your reputation, or rewrite the law. Hire <b>Services</b> (mostly weekly) to squeeze harder for less heat. Tap the little <b>ⓘ</b> on the Scrutiny and Influence tiles any time for a refresher.</p>
         <p><b>5. Win, or get caught.</b> Let Scrutiny redline — or let Vane's file hit 100% — and the <b>Exposé</b> ends your run. Over-leverage into a rate hike and the <b>Market Correction</b> bankrupts you. Climb to the top and bank <b>500 influence</b> to seize the Kāinga Ora board and become <b>Minister of Housing</b>. (There's a secret ending for playing clean, too.)</p>
     `, [
         { label: state.hintsOff ? '💡 Show helper tips' : '💡 Hide helper tips', cls:'ghost', fn:()=>{ setHints(!!state.hintsOff); closeModal(); } },
@@ -2152,7 +2203,7 @@ function scrutinyExplainer(){
     showModal(`
         <div class="modal-kicker">Public Scrutiny 🔥</div>
         <h1>Your only real risk</h1>
-        <p><b>What raises it:</b> every rent rise, invented fee, ignored standard and no-cause eviction adds <b>heat</b> — that's the little <b>+heat</b> tag on each move, and it's exactly what fills this <b>Public Scrutiny</b> meter. The nastier the move, the bigger the jump.</p>
+        <p><b>What raises it:</b> every rent rise, invented fee, ignored standard and no-cause eviction adds scrutiny — that's the little <b>+scrutiny</b> tag on each move, and it's exactly what fills this <b>Public Scrutiny</b> meter. The nastier the move, the bigger the jump.</p>
         <p><b>Why it matters:</b> the meter cools slowly on its own, but while it's high it feeds <b>Fiona Vane's dossier</b>. Fill her file to <b>100%</b> and she <b>publishes</b> — a scrutiny bomb. Sit at the top of the red for three weeks and the <b>Exposé</b> drops: your run is over.</p>
         <p><b>How to cool it:</b> spend <b>Political Influence</b> in the 🏛️ Politics tab — Spike the Story, launder your reputation, or rewrite the law. Or just ease off the squeeze and let it decay.</p>
         <p style="color:var(--muted);font-style:italic;">Greed is free — until it isn't. Scrutiny is the bill.</p>
@@ -2317,6 +2368,13 @@ function setBuyQty(q){
     refresh();
 }
 function toggleMute(){ state.muted = !state.muted; $('mute-btn').textContent = state.muted ? '🔇' : '🔊'; }
+/* space-bar pause: remember the speed you were at and come back to it */
+let _prevSpeed = CFG.DEFAULT_SPEED;
+function togglePause(){
+    if (state.ended) return;
+    if (state.speed === 0) setSpeed(_prevSpeed || CFG.DEFAULT_SPEED);
+    else { _prevSpeed = state.speed; setSpeed(0); toast('⏸ Paused — space to resume.', 'event'); }
+}
 
 /* =============================================================== COACH / GUIDANCE */
 function selectTab(name){
@@ -2466,8 +2524,13 @@ function injectHintClosers(){
 }
 
 /* =============================================================== REFRESH */
+let _dispMoney = null;   // displayed cash eases toward the real figure so it visibly ticks
 function refresh(){
-    $('money').textContent = money(state.money);
+    const _mTarget = state.money;
+    if (_dispMoney === null || !isFinite(_dispMoney) || state.ended || state.speed === 0
+        || Math.abs(_mTarget - _dispMoney) < 1) _dispMoney = _mTarget;
+    else _dispMoney += (_mTarget - _dispMoney) * 0.22;
+    $('money').textContent = money(_dispMoney);
     const cf = netCashflow();
     const cfEl = $('income-rate');
     cfEl.textContent = (cf<0?'−':'+') + money(Math.abs(cf)) + '/wk';
@@ -2487,14 +2550,20 @@ function refresh(){
     const unlocked = unlockedTierCount();
     if (state._unlockedSeen === undefined) state._unlockedSeen = unlocked;
     if (unlocked > state._unlockedSeen){
-        for (let i=state._unlockedSeen; i<unlocked; i++){ const p = PROPERTIES[i]; if (p) toast(`🔓 New asset class: ${p.name}`, 'good'); }
+        // one toast even when a bulk buy unlocks several tiers at once
+        const names = [];
+        for (let i=state._unlockedSeen; i<unlocked; i++){ const p = PROPERTIES[i]; if (p) names.push(p.name); }
+        if (names.length) toast(names.length > 1 ? `🔓 New asset classes: ${names.join(' · ')}` : `🔓 New asset class: ${names[0]}`, 'good');
         state._unlockedSeen = unlocked;
     }
 
     const tier = heatTier();
     $('scrutiny-fill').style.width = state.heat + '%';
     $('scrutiny-tier').textContent = tier.trend;
-    $('scrutiny-foot').textContent = tier.foot;
+    // while the redline streak is live, the tile counts down to the exposé in plain words
+    $('scrutiny-foot').textContent = (state.heatMaxStreak > 0 && state.heat >= CFG.HEAT_MAX - 4 && !state.ended)
+        ? `🚨 EXPOSÉ IN ${3 - state.heatMaxStreak} WEEK${state.heatMaxStreak >= 2 ? '' : 'S'} — spike the story or ease off NOW.`
+        : tier.foot;
     document.querySelector('.scrutiny-tile').classList.toggle('hot', state.heat >= 80);
     document.body.classList.toggle('redline', state.heat >= 85);   // danger vignette
     if (tier.i >= 3 && !state._crisisSeen){
@@ -2515,16 +2584,55 @@ function refresh(){
 
     // bank strip
     const room = borrowable();
+    const props = propertyCount();
     const bh = $('bank-headroom');
     if (bh){
-        bh.textContent = propertyCount() === 0
+        bh.textContent = props === 0
             ? `🏦 Put ~35% down and the bank funds the rest — a deal a first-home buyer can't get`
             : (room >= 1000 ? `🏦 The bank will lend you ${money(room)} more`
                             : `🏦 Bank tapped out — lift your rent roll (or let values rise) to borrow more`);
         const rel = $('bank-release');
-        if (rel){ rel.disabled = room < 1000; rel.textContent = room >= 1000 ? `Release ${money(room)}` : 'No equity to release'; }
+        if (rel){
+            rel.disabled = room < 1000;
+            rel.textContent = room >= 1000 ? `Release ${money(room)}` : 'No equity to release';
+            // once the headroom is real money, the button stops whispering
+            rel.classList.toggle('ready', room >= 40000);
+        }
         const rateEl = $('bank-rate');
         if (rateEl) rateEl.textContent = `Mortgage rate ${(state.rate*100).toFixed(2)}% · you owe ${money(state.debt)}`;
+    }
+    // the bank's standing offer, visible from every tab (cash tile) — tap to jump to it
+    const cb = $('cash-bank');
+    if (cb){
+        const show = props > 0 && room >= 1000 && !state.ended;
+        cb.hidden = !show;
+        if (show) cb.textContent = `🏦 Bank will lend ${money(room)} — release it →`;
+    }
+    // first time the offer is worth real money, say so once — players kept missing it
+    if (!state._equityTip && props > 0 && room >= 50000){
+        state._equityTip = true;
+        addNews(`🏦 Your portfolio's paper value has crept up, so the bank will now re-lend you ${money(room)} against it. That's the <b>Release equity</b> button in Buy — free cash today, more debt forever. The Kiwi way.`, 'event');
+        newsFlash();
+    }
+    // how many properties you own, next to the shop title (unlocks key off it)
+    const pt = $('prop-total');
+    if (pt) pt.textContent = props > 0 ? `· you own ${props}` : '';
+
+    // path-to-the-win tracker: phase 4 + 520 influence + the $500k board "donation"
+    const wt = $('win-tracker');
+    if (wt){
+        const showWt = !state.ended && !!state.unlocked.politics;
+        wt.hidden = !showWt;
+        if (showWt){
+            const seg = (id, done, txt)=>{ const el = $(id); if (el){ el.textContent = (done ? '✓ ' : '') + txt; el.classList.toggle('done', done); } };
+            const phOk = ph.i >= 4, inflOk = state.influence >= 520, cashOk = state.money >= 500000;
+            seg('wt-phase', phOk, phOk ? PHASES[4].name : `status ${ph.i}/4`);
+            seg('wt-infl',  inflOk, `${fmt(Math.min(state.influence, 520))}/520 influence`);
+            seg('wt-cash',  cashOk, cashOk ? '$500k fee banked' : `${money(state.money)} / $500k fee`);
+            wt.classList.toggle('ready', phOk && inflOk && cashOk);
+            const lbl = wt.querySelector('.wt-label');
+            if (lbl) lbl.textContent = (phOk && inflOk && cashOk) ? '🎯 The board seat is yours — claim it in Politics' : '🎯 Path to Minister';
+        }
     }
 
     // nemesis dossier strip
@@ -2593,6 +2701,17 @@ function setupEvents(){
     const cBtn = $('coach-btn'); if (cBtn) cBtn.addEventListener('click', ()=> setCoach(!!state.coachOff));
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
+    // the cash-tile bank line jumps you to the strip it's talking about
+    const cb = $('cash-bank');
+    if (cb) cb.addEventListener('click', ()=>{
+        selectTab('portfolio');
+        setTimeout(()=>{
+            const bs = document.querySelector('.bank-strip'); if (!bs) return;
+            bs.scrollIntoView({ behavior:'smooth', block:'center' });
+            bs.classList.remove('pulse'); void bs.offsetWidth; bs.classList.add('pulse');
+            setTimeout(()=>{ if (bs) bs.classList.remove('pulse'); }, 3400);
+        }, 120);
+    });
     const em = $('empire-map'); if (em) em.addEventListener('click', (e)=>{ const h = e.target.closest && e.target.closest('.ehouse[data-house]'); if (h) openHouseModal(); });
     document.querySelectorAll('[data-explain]').forEach(b=> b.addEventListener('click', (e)=>{
         e.stopPropagation();
@@ -2600,7 +2719,20 @@ function setupEvents(){
         else if (b.dataset.explain === 'influence') influenceExplainer();
     }));
     $('modal-overlay').addEventListener('click', (e)=>{ if (e.target === $('modal-overlay') && !state.ended && !_dilemmaOpen) closeModal(); });
-    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !state.ended && !_dilemmaOpen) closeModal(); });
+    // keyboard: Esc closes modals, space pauses, 1–9 jump between visible tabs
+    document.addEventListener('keydown', (e)=>{
+        if (e.key === 'Escape'){ if (!state.ended && !_dilemmaOpen) closeModal(); return; }
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (!$('modal-overlay').hidden) return;                    // a modal owns the keyboard
+        const tag = (e.target && e.target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (e.key === ' '){ e.preventDefault(); togglePause(); return; }
+        const n = parseInt(e.key, 10);
+        if (n >= 1 && n <= 9){
+            const visible = Array.prototype.filter.call(document.querySelectorAll('#tabs .tab'), t=> !t.hidden);
+            if (visible[n-1]) selectTab(visible[n-1].dataset.tab);
+        }
+    });
 }
 
 function init(){

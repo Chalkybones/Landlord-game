@@ -23,7 +23,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260729a">
+    <link rel="stylesheet" href="style.css?v=20260805a">
 </head>
 <body>
     <div class="app">
@@ -73,6 +73,7 @@
                 </div>
                 <div class="stat-big" id="money">$0</div>
                 <div class="stat-foot" id="networth">Net worth: $0</div>
+                <button class="stat-bank" id="cash-bank" title="Jump to the bank strip and release the equity" hidden>🏦 Bank will lend $0 — release it →</button>
             </div>
 
             <div class="stat-tile scrutiny-tile">
@@ -103,6 +104,14 @@
                 <div class="stat-foot" id="influence-foot">Spend it to make problems disappear.</div>
             </div>
         </section>
+
+        <!-- ===== PATH TO THE WIN ===== -->
+        <div class="win-tracker" id="win-tracker" hidden>
+            <span class="wt-label">🎯 Path to Minister</span>
+            <span class="wt-seg" id="wt-phase" title="Climb the ladder: the board seat needs Housing Spokesperson standing (net worth $20m)"></span>
+            <span class="wt-seg" id="wt-infl" title="Bank 520 Political Influence — earn it in the Politics tab"></span>
+            <span class="wt-seg" id="wt-cash" title="The board seat costs $500,000, filed under 'governance'"></span>
+        </div>
 
         <!-- ===== SPEED CONTROLS ===== -->
         <div class="speed-controls">
@@ -143,7 +152,7 @@
             <section class="tab-panel" data-panel="portfolio">
                 <div class="panel">
                     <div class="panel-head">
-                        <h2>Acquire Property</h2>
+                        <h2>Acquire Property <span class="muted" id="prop-total"></span></h2>
                         <span class="panel-hint">Each purchase removes a home from the market. That's the business model.</span>
                         <div class="buyqty" id="buyqty">
                             <span class="buyqty-label">Buy</span>
@@ -233,7 +242,7 @@
                 <button id="reset-game" class="utility-btn danger">☠ Reset</button>
             </div>
             <div class="footer-meta">
-                <span class="version">v1.8 — Dark Money Edition</span>
+                <span class="version">v1.9 — Equity Mate Edition</span>
                 <span class="disclaimer">None of it is real. The horrors, however, are load-bearing.</span>
             </div>
         </footer>
@@ -253,6 +262,6 @@
         </div>
     </div>
 
-    <script src="game.js?v=20260729a"></script>
+    <script src="game.js?v=20260805a"></script>
 </body>
 </html>

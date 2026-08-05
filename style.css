@@ -250,6 +250,15 @@ body {
 .cash-tile .stat-big { font-size: 2.7em; text-shadow: 0 0 26px rgba(51,211,133,.18); }
 .stat-foot { font-size: .78em; color: var(--muted); margin-top: 5px; }
 
+/* the bank's standing offer, pinned to the cash tile so it's visible from every tab */
+.stat-bank {
+    display: block; width: 100%; margin-top: 9px; padding: 7px 10px; border-radius: 9px; cursor: pointer;
+    border: 1px solid rgba(242,192,74,.42); background: rgba(242,192,74,.12);
+    color: var(--gold); font-weight: 800; font-size: .78em; text-align: left; transition: all .12s;
+    font-family: var(--font-body); font-variant-numeric: tabular-nums;
+}
+.stat-bank:hover { background: var(--gold); color: #2a1e00; box-shadow: var(--glow-gold); }
+
 .cash-tile .stat-big.flash { animation: cashflash .4s ease; }
 @keyframes cashflash { 0% { color: var(--green); } 100% { color: var(--head); } }
 .cash-tile .stat-big.flash-red { animation: cashflashred .5s ease; }
@@ -266,6 +275,20 @@ body {
 .scrutiny-tile.hot .meter-fill { animation: pulseHeat 1s ease-in-out infinite; }
 @keyframes pulseHeat { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
 .scrutiny-tile.hot::before { animation: pulseHeat 1s ease-in-out infinite; }
+
+/* ---------- Path-to-the-win tracker ---------- */
+.win-tracker {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 7px 12px; margin-bottom: 14px; box-shadow: var(--shadow-sm); font-size: .78em;
+}
+.wt-label { font-weight: 800; color: var(--gold); letter-spacing: .02em; }
+.wt-seg {
+    font-weight: 700; color: var(--muted); background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 3px 10px; font-variant-numeric: tabular-nums; cursor: default;
+}
+.wt-seg.done { color: var(--green); border-color: rgba(51,211,133,.4); background: rgba(51,211,133,.1); }
+.win-tracker.ready { border-color: rgba(242,192,74,.5); box-shadow: var(--glow-gold); }
 
 /* ---------- Speed controls ---------- */
 .speed-controls {
@@ -370,6 +393,15 @@ body {
 }
 .bank-release:hover:not(:disabled) { background: var(--gold); color: #2a1e00; }
 .bank-release:disabled { opacity: .45; cursor: not-allowed; }
+/* once there's real money on offer, the release button stops whispering */
+.bank-release.ready:not(:disabled) {
+    background: linear-gradient(180deg, var(--gold), var(--gold-dark)); color: #2a1e00;
+    border-color: transparent; font-weight: 800; box-shadow: var(--glow-gold);
+}
+.bank-release.ready:not(:disabled):hover { filter: brightness(1.06); transform: translateY(-1px); }
+/* the cash-tile link lands here — flash the strip so the eye finds it */
+.bank-strip.pulse { animation: bankPulse 1.6s ease 2; }
+@keyframes bankPulse { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px rgba(242,192,74,.55), var(--glow-gold); } }
 .nb-badge {
     font-size: .6em; font-weight: 800; letter-spacing: .05em; vertical-align: middle;
     background: var(--green); color: #042716; padding: 2px 6px; border-radius: 6px; margin-left: 4px;
@@ -407,6 +439,9 @@ body {
 .buy-btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); box-shadow: var(--glow-teal); }
 .buy-btn:disabled { background: #17282b; color: #566d6e; cursor: not-allowed; box-shadow: none; }
 .buy-btn.owned { background: var(--green); color: #042716; cursor: default; box-shadow: none; }
+/* deposit's short but the bank would cover it: buy button becomes a release-&-buy */
+.buy-btn.equity-buy { background: linear-gradient(180deg, var(--gold), var(--gold-dark)); color: #2a1e00; box-shadow: 0 2px 10px rgba(242,192,74,.3); }
+.buy-btn.equity-buy:hover:not(:disabled) { box-shadow: var(--glow-gold); }
 .lock-note { font-size: .76em; color: var(--gold); font-weight: 700; }
 
 /* ---------- Service cards (weekly hires / one-off buys) ---------- */
@@ -603,14 +638,17 @@ body.redline::after {
 @media (max-width: 700px) {
     .app { padding: 10px 10px 84px; }   /* bottom pad clears the fixed tab bar */
 
-    /* compact header */
-    .topbar { padding: 10px 12px; gap: 10px; border-radius: 12px; margin-bottom: 10px; }
-    .brand-mark { width: 36px; height: 36px; font-size: 1.2em; border-radius: 9px; }
-    .brand-name { font-size: 1.1em; }
+    /* compact header — everything shrinks before anything clips off-screen */
+    .topbar { padding: 10px 12px; gap: 8px; border-radius: 12px; margin-bottom: 10px; }
+    .brand { min-width: 0; }
+    .brand-mark { width: 36px; height: 36px; font-size: 1.2em; border-radius: 9px; flex-shrink: 0; }
+    .brand-name { font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .brand-text { min-width: 0; }
     .brand-tag { display: none; }
-    .phase-badge { margin-left: auto; padding: 5px 10px; }
+    .phase-badge { margin-left: auto; padding: 5px 10px; min-width: 0; flex: 0 1 auto; }
     .phase-label { display: none; }
-    .phase-name { font-size: .82em; }
+    .phase-name { display: block; font-size: .82em; max-width: 30vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topbar-tools { flex-shrink: 0; }
     .icon-btn { width: 32px; height: 32px; }
 
     /* ticker / dossier / rap-sheet: compact for phones */
@@ -799,6 +837,8 @@ body.redline::after {
     .influence-tile .stat-big { font-size: 1.18em; }
     .stat-foot, .stat-trend { display: none; }
     .cash-tile .stat-trend { display: block; font-size: .72em; position: absolute; top: 9px; right: 10px; }
+    /* leave room for that absolutely-positioned trend so it never overlaps the label */
+    .cash-tile .stat-label { display: block; max-width: calc(100% - 62px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .meter { height: 12px; margin: 6px 0 0; }
     .scrutiny-tile .stat-top, .influence-tile .stat-top { margin-bottom: 3px; }
 
@@ -818,6 +858,11 @@ body.redline::after {
 
     .tenant-avatar { width: 42px; height: 42px; }
     .tenants-strip { margin-bottom: 10px; }
+
+    /* keep the bank's offer visible on the slim cash tile, just smaller */
+    .stat-bank { font-size: .62em; padding: 5px 7px; margin-top: 6px; }
+    .win-tracker { padding: 6px 9px; gap: 4px 6px; font-size: .68em; margin-bottom: 8px; }
+    .wt-seg { padding: 2px 8px; }
 }
 /* very small phones only: single column so text stays legible */
 @media (max-width: 340px) {
