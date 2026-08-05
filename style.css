@@ -334,15 +334,15 @@ body {
 .tenant-top { display: flex; align-items: center; gap: 10px; }
 .tenant-avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 1.15em; background: rgba(42,208,198,.14); flex-shrink: 0; }
 .tenant-name { font-weight: 800; font-size: .98em; color: var(--head); }
-.tenant-job { font-size: .76em; color: var(--muted); }
-.tenant-situation { font-size: .82em; color: var(--ink); background: var(--inset); border-radius: 8px; padding: 7px 9px; }
+.tenant-job { font-size: .8em; color: var(--muted); }
+.tenant-situation { font-size: .87em; color: var(--ink); background: var(--inset); border-radius: 8px; padding: 8px 10px; }
 .tenant-rent { font-size: .82em; font-weight: 700; }
 .tenant-rent .rent-num { color: var(--teal-light); }
 .strain-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 2px; }
-.strain-cap { font-size: .66em; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 800; }
+.strain-cap { font-size: .7em; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 800; }
 .strain-meter { height: 8px; background: var(--inset); border-radius: 4px; overflow: hidden; }
 .strain-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--gold), var(--red)); background-size: 300%; transition: width .3s; }
-.strain-label { font-size: .72em; color: var(--muted); text-align: right; font-weight: 700; }
+.strain-label { font-size: .78em; color: var(--muted); text-align: right; font-weight: 700; }
 .tenant-btn {
     margin-top: 4px; border: none; border-radius: 10px; padding: 11px; cursor: pointer;
     background: linear-gradient(180deg, #ff6b6b, var(--red-dark)); color: #fff; font-weight: 800; font-size: .84em; transition: all .12s;
@@ -478,10 +478,10 @@ body {
 .action-btn:hover:not(:disabled) { transform: translateY(-2px); background: var(--card-2); box-shadow: 0 8px 20px rgba(0,0,0,.36), 0 0 0 1px rgba(255,91,91,.2); }
 .action-btn.political:hover:not(:disabled) { box-shadow: 0 8px 20px rgba(0,0,0,.36), 0 0 0 1px rgba(242,192,74,.24); }
 .action-btn:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.4); }
-.action-name { font-weight: 800; font-size: .95em; color: var(--head); }
-.action-desc { font-size: .8em; color: var(--muted); }
-.action-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
-.tag { font-size: .72em; font-weight: 800; padding: 2px 7px; border-radius: 6px; letter-spacing: .01em; }
+.action-name { font-weight: 800; font-size: 1.04em; color: var(--head); }
+.action-desc { font-size: .89em; color: #b6cccb; line-height: 1.45; }
+.action-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.tag { font-size: .8em; font-weight: 800; padding: 3px 8px; border-radius: 6px; letter-spacing: .01em; }
 .tag.money { background: rgba(51,211,133,.16); color: #57e6a0; }
 .tag.cost { background: rgba(255,91,91,.16); color: #ff8080; }
 .tag.heat { background: rgba(240,161,42,.16); color: #f4b45a; }
@@ -941,9 +941,9 @@ body.redline::after {
 .scrutiny-tile.poke .meter-fill { animation: meterPoke .62s ease; }
 @keyframes meterPoke { 0%,100% { filter: brightness(1); } 40% { filter: brightness(1.6); } }
 
-.tenant-stakes { font-size: .68em; color: var(--muted-2); line-height: 1.35; margin: -1px 0 1px; }
+.tenant-stakes { font-size: .76em; color: var(--muted); line-height: 1.4; margin: -1px 0 1px; }
 .tenant-stakes b { color: #ff8a6a; }
-@media (max-width: 700px) { .info-btn { width: 18px; height: 18px; } .tenant-stakes { font-size: .66em; } }
+@media (max-width: 700px) { .info-btn { width: 18px; height: 18px; } .tenant-stakes { font-size: .74em; } }
 
 /* dismissible advisor (coach) */
 .coach-close {
