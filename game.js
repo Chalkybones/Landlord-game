@@ -712,6 +712,9 @@ function offlineProgress(){
     const earned = flow > 0 ? flow * weeks : 0;   // don't bankrupt you while away
     state.marketIndex *= Math.pow(1 + CFG.APPRECIATION/52, weeks);
     state.heat = clamp(state.heat - multipliers().heatDecay * weeks, 0, CFG.HEAT_MAX);
+    // Vane cools off while you're away too — heat decays offline, so a frozen
+    // dossier would otherwise ambush a returning player with a stale near-publish
+    state.dossier = clamp(state.dossier - 0.4 * weeks, 0, 100);
     if (earned > 1){
         state.money += earned;
         setTimeout(()=> modalOffline(earned, capped/3600), 400);
@@ -1667,7 +1670,7 @@ const EVENTS = [
     }},
     { tier:2, cond:()=> state.evictions>0, run(){
         if (state.upgrades.tribunal){
-            addNews(`⚖️ EVENT: Tenancy Tribunal case. Your Season Pass kicks in — you win on a technicality involving a comma. Costs awarded to the crying party.`, 'event');
+            addNews(`⚖️ EVENT: Tenancy Tribunal case. Your lawyer on retainer earns their keep — you win on a technicality involving a comma. Costs awarded to the crying party.`, 'event');
         } else {
             const pay = 4000 + state.tenants*200; state.money -= pay; addHeat(4);
             addNews(`⚖️ EVENT: Tribunal orders you to repay ${money(pay)} in unlawful fees. You appeal, on principle (of keeping the money).`, 'bad');
@@ -1811,8 +1814,10 @@ const DILEMMAS = [
     { id:'rival', title:'A rival makes an offer 🛥', minPhase:1, cond:()=> propertyCount() >= 2,
       body:`<p>A bigger landlord — nicer boat, worse Google reviews — offers <b>cash today</b> for your leakiest, most troublesome block. He seems oddly, specifically keen.</p>`,
       choices:[
-        { label:'Sell it — his problem now', apply:s=>{ const c = sellTopProperty(false); if (c) fx('+'+money(c),'pos',{clientX:innerWidth/2,clientY:200}); },
-          result:`He overpays without blinking. Either he knows something you don't, or he's a fool. In this market those pay identically.`, news:'event' },
+        { label:'Sell it — his problem now', apply:s=>{
+            const c = sellTopProperty(false);
+            if (c){ const prem = Math.round(c * 0.15); s.money += prem; fx('+'+money(c + prem),'pos',{clientX:innerWidth/2,clientY:200}); } },
+          result:`He overpays by 15% without blinking. Either he knows something you don't, or he's a fool. In this market those pay identically.`, news:'event' },
         { label:'Hold — what does he know?', cls:'ghost',
           result:`You hold. If he wants it this badly, you reason, it must be worth keeping. This is exactly how he wanted you to reason.`, news:'event' },
       ]},
@@ -2038,11 +2043,16 @@ function doPrestige(){
                 .forEach(id => delete keptUpgrades[id]);
             const keep = { upgrades: keptUpgrades, legacy: state.legacy+1, influence: Math.floor(state.influence/2),
                            lifetime: state.lifetimeInfluence, muted: state.muted, buyQty: state.buyQty,
-                           achievements: state.achievements };
+                           achievements: state.achievements,
+                           // a restructured veteran doesn't need the tutorials again
+                           taughtHeat: state.onceUsed.taughtHeat, eqRel: state.equityReleases,
+                           hintsOff: state.hintsOff, coachOff: state.coachOff };
             state = defaultState();
             state.upgrades = keep.upgrades; state.legacy = keep.legacy; state.influence = keep.influence;
             state.lifetimeInfluence = keep.lifetime; state.muted = keep.muted; state.buyQty = keep.buyQty;
             state.achievements = keep.achievements;
+            state.onceUsed.taughtHeat = keep.taughtHeat; state.equityReleases = keep.eqRel;
+            state.hintsOff = keep.hintsOff; state.coachOff = keep.coachOff;
             state._phaseSeen = 0; state._unlockedSeen = unlockedTierCount();
             _leaving = {};
             syncTenants(); buildAll(); closeModal();
@@ -2485,6 +2495,10 @@ function coachStep(){
     const s = state, props = propertyCount(), tier = heatTier().i, ph = phaseInfo().i;
     if (tier >= 3 && s.influence < 60)
         return { text:"🔥 The press is circling. Go to Politics and spend Influence to spike the story — before the exposé drops.", tab:'politics' };
+    const cf = netCashflow();
+    if (props > 0 && cf < 0 && s.money < -cf * 8)
+        return { text:`🩸 You're bleeding ${money(-cf)}/wk and the buffer's thin. Sell to a golden-visa buyer (Squeeze), release equity (Buy), or let a retainer go.`,
+                 tab: anyHireEngaged() ? 'services' : 'operations' };
     if (props === 0)
         return { text:"Open the 🏚️ Buy tab and get your first rental — it's your income, and the borrowing power to buy the next one. Watch it turn gold on your map.", tab:'portfolio' };
     if (s.rentRaises === 0)
@@ -2493,6 +2507,8 @@ function coachStep(){
         return { text:"One's a hobby, two's a portfolio. Buy another rental — owning more unlocks bigger, better properties.", tab:'portfolio' };
     if (s.feesInvented === 0 && s.money < 60000)
         return { text:"Cash a bit tight? In Squeeze, “Invent a Fee.” It's not a letting fee — it's an “administration contribution.”", tab:'operations' };
+    if (s.money < 30000 && borrowable() > 100000)
+        return { text:`Cash-poor, equity-rich — the classic. The bank will re-lend you ${money(borrowable())} against your portfolio: hit 🏦 Release equity in Buy.`, tab:'portfolio' };
     if (tier >= 2 && s.influence < 40)
         return { text:"People are noticing. Duck into Politics and turn some cash into Influence before it gets loud.", tab:'politics' };
     if (s.money > 75000 && canAffordAnyProperty())
@@ -2647,6 +2663,12 @@ function refresh(){
         cb.hidden = !show;
         if (show) cb.textContent = `🏦 Bank will lend ${money(room)} — release it →`;
     }
+    // overdrawn: call it out once per dip below zero, not every tick
+    if (state.money < 0 && !state._overdrawn && !state.ended){
+        state._overdrawn = true;
+        toast('🏦 Overdrawn. The bank covers it — for you, always — but every red week drags your net worth toward the margin call.', 'bad');
+    } else if (state.money >= 0 && state._overdrawn) state._overdrawn = false;
+
     // first time the offer is worth real money, say so once — players kept missing it
     if (!state._equityTip && props > 0 && room >= 50000){
         state._equityTip = true;
