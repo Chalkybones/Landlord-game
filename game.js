@@ -98,7 +98,7 @@ const OPERATIONS = [
       desc:'No-cause terminations came back on 30 Jan 2025 — "open season on renters," said Renters United. No reason required. That\'s the product.',
       news:s => `Tenant requests a repair, receives a 90-day no-cause notice instead. Re-let same day at market. The Minister files it under "supply."` },
 
-    { id:'airbnb', emoji:'🧳', name:'Convert to Airbnb', heat:11, needTenants:true, cost:5000,
+    { id:'airbnb', emoji:'🧳', name:'Convert to Airbnb', heat:11, needTenants:true, minTenants:2, cost:5000,
       money:(s,m)=> grossRentWeekly()*2.2 + 10000, removesHousehold:true,
       desc:'Flip one of your long-term rentals to short-stay: a fat cash lump now, and the household living there is out. Housing a tourist three nights beats housing a nurse three years.',
       news:s => `Long-term rental flipped to short-stay. A family of four replaced by a bucks\' party from Ballarat. Five stars, would evict again.` },
@@ -992,10 +992,13 @@ function opTags(op){
     if (op.heat) t.push(`<span class="tag ${op.heat<0?'money':'heat'}">${op.heat<0?'':'+'}${op.heat} scrutiny</span>`);
     if (op.infl) t.push(`<span class="tag infl">+${op.infl} infl</span>`);
     if (op.strain) t.push(`<span class="tag heat">+tenant strain</span>`);
+    if (op.minTenants && state.tenants < op.minTenants)
+        t.push(`<span class="tag lock">🔒 needs ${op.minTenants}+ households</span>`);
     return t.join('');
 }
 function opAvailable(op){
     if (op.needTenants && state.tenants <= 0) return false;
+    if (op.minTenants && state.tenants < op.minTenants) return false;   // e.g. Airbnb can't empty your last rental
     if (op.needProperty && propertyCount() < op.needProperty) return false;
     if (op.cost && state.money < op.cost) return false;
     return true;
