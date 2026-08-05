@@ -650,7 +650,9 @@ function equityBuyPlan(p){
 }
 
 /* ============================================================ SAVE / LOAD */
+let _resetting = false;   // once a reset is underway, nothing may re-save the old empire
 function saveGame(silent){
+    if (_resetting) return;
     try {
         state.lastUpdate = now();
         localStorage.setItem(CFG.SAVE_KEY, JSON.stringify(state));
@@ -1107,7 +1109,10 @@ function meetsNeed(need){
    a refresh — repaints in-progress departures instead of wiping them. */
 let _leaving = {};
 function makeTenant(){
-    const id = pickDiverseName();
+    // never mint a namesake of someone already on the roster — two "James Wilson"
+    // cards read as a bug, not a coincidence
+    let id = pickDiverseName(), guard = 0;
+    while (guard++ < 8 && (state.featured||[]).some(t => t && t.name === id.name)) id = pickDiverseName();
     const rent = 420 + Math.floor(Math.random()*10)*35;
     const used = (state.featured||[]).map(t=>t && t.situation);
     let sit, tries = 0;
@@ -1122,6 +1127,26 @@ function syncTenants(){
     let changed = false;
     while (state.featured.length < want){ state.featured.push(makeTenant()); changed = true; }
     while (state.featured.length > want){ state.featured.pop(); changed = true; }
+    // heal rosters that already doubled up (saves from before the namesake guard):
+    // a repeated object gets replaced outright; a repeated name gets a fresh identity
+    // (new name/face, same job, story, rent & strain — the household stays put).
+    const seenObj = new Set(), seenName = {};
+    state.featured.forEach((t, i)=>{
+        if (!t) return;
+        if (seenObj.has(t)){ state.featured[i] = makeTenant(); changed = true; return; }
+        seenObj.add(t);
+        if (seenName[t.name]){
+            let id = pickDiverseName(t), g = 0;
+            while (g++ < 8 && seenName[id.name]) id = pickDiverseName(t);
+            t.name = id.name; t.eth = id.eth;
+            t.skin = pick(SKIN_BY_ETH[id.eth] || SKIN_BY_ETH.euro);
+            t.hair = pick(HAIRS);
+            t.hairCol = pick(HAIRCOL_BY_ETH[id.eth] || HAIRCOL_BY_ETH.euro);
+            t.faceV = FACE_V;
+            changed = true;
+        }
+        seenName[t.name] = true;
+    });
     return changed;
 }
 function renderTenants(){
@@ -2353,6 +2378,9 @@ function resetGame(){
     ]);
 }
 function hardReset(){
+    // flag FIRST: reload() fires beforeunload → saveGame, which would otherwise
+    // write the old empire straight back after we've deleted it
+    _resetting = true;
     try { localStorage.removeItem(CFG.SAVE_KEY); localStorage.removeItem('kiwiLandlordEmpire'); } catch(e){}
     location.reload();
 }
