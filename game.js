@@ -298,7 +298,8 @@ function makeName(){
 function pickDiverseName(self){
     let id = makeName(), guard = 0;
     const clustered = e => (state.featured || []).filter(t => t && t !== self && t.faceV === FACE_V && t.eth === e).length >= 2;
-    while (guard++ < 3 && clustered(id.eth)) id = makeName();
+    const namesake = n => (state.featured || []).some(t => t && t !== self && t.name === n);
+    while (guard++ < 6 && (clustered(id.eth) || namesake(id.name))) id = makeName();
     return id;
 }
 const T_JOB = [
@@ -952,6 +953,7 @@ function buildProperties(){
                 btn.classList.toggle('equity-buy', !!eq);
                 btn.textContent = ok ? `Buy ×${state.buyQty} — ${money(plan.deposit)} down`
                     : eq ? `🏦 Release ${money(eq.draw)} equity & buy`
+                    : plan.n >= 1 ? `Can only afford ×${plan.n} — use Max`
                     : (buyBlockReason(p) || 'Unavailable');
             }
         });
@@ -1345,6 +1347,7 @@ function doOperation(op, e){
    today's index, an immediate re-sale nets ≈0 — no buy-then-flip arbitrage. */
 let _lastSold = null;
 function sellTopProperty(atCost){
+    _lastSold = null;                 // never let a previous sale's toast repeat on a no-op
     let best = 0, id = null;
     PROPERTIES.forEach(p=>{ if (state.properties[p.id].count>0 && p.price>best){ best=p.price; id=p.id; } });
     if (!id) return 0;
@@ -1754,10 +1757,10 @@ const DILEMMAS = [
         { label:'Charm-offensive lunch ($4k)', apply:s=>{ s.money -= 4000; addHeat(-10); },
           result:`Two hours and a degustation later she "can't stand the story up — yet." You pick up the bill and the tab on her goodwill.`, news:'event' },
       ]},
-    { id:'bank', title:'"You\'re under-leveraged" 🏦',
+    { id:'bank', title:'"You\'re under-leveraged" 🏦', cond:()=> borrowable() > 20000,
       body:`<p>Your relationship manager frowns at your file like it's personally disappointed her. "Someone of your standing," she says, "should be carrying <i>far</i> more debt."</p>`,
       choices:[
-        { label:'Gear up — draw it all down', apply:s=>{ const room = borrowable(); s.money += room; s.debt += room; s.dtiDebt += room; },
+        { label:'Gear up — draw it all down', apply:s=>{ const room = borrowable(); s.money += room; s.debt += room; s.dtiDebt += room; s.equityReleases = (s.equityReleases||0) + 1; },
           result:`You borrow against the borrowing against the borrowing. The manager beams. Somewhere in a basement, a stress-test model quietly files for stress leave.`, news:'event', toast:'Maximum leverage engaged. What could go wrong.' },
         { label:'Keep some powder dry', cls:'ghost',
           result:`You decline to gear up further. The manager notes, coolly, that you're "not really a growth mindset." You'll never eat lunch in that branch again.`, news:'event' },
@@ -2247,7 +2250,12 @@ function influenceExplainer(){
 function teachHeat(){
     if (state.onceUsed.taughtHeat) return;
     state.onceUsed.taughtHeat = true;
-    setTimeout(scrutinyExplainer, 280);   // fires right after the player's first squeeze
+    // fires right after the player's first squeeze — but never over another modal
+    // (replacing an open dilemma would orphan its pause and block future dilemmas)
+    setTimeout(()=>{
+        if (_dilemmaOpen || !$('modal-overlay').hidden){ state.onceUsed.taughtHeat = false; return; }
+        scrutinyExplainer();
+    }, 280);
 }
 function pokeScrutiny(){
     const tile = document.querySelector('.scrutiny-tile'); if (!tile) return;
