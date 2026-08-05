@@ -475,6 +475,8 @@ function defaultState() {
         dossier: 0,                // the reporter's investigation, 0–100
         _spree: 0,                 // recent squeeze intensity (anti-spam: feeds the dossier)
         _dossierChapter: 0,        // which escalation beat she's reached
+        inquiry: 0,                // Parliament's late-game counter-pressure, 0–100
+        _inquiryChapter: 0,        //   — fed by influence spending once you're a Mogul
         unlocked: { portfolio: true },  // progressive disclosure of tabs/systems
     };
 }
@@ -674,6 +676,8 @@ function loadGame(){
         state.achievements = state.achievements || {};
         if (typeof state.dossier !== 'number') state.dossier = 0;
         if (typeof state._dossierChapter !== 'number') state._dossierChapter = 0;
+        if (typeof state.inquiry !== 'number') state.inquiry = 0;
+        if (typeof state._inquiryChapter !== 'number') state._inquiryChapter = 0;
         state.unlocked = state.unlocked || { portfolio: true };
         state.unlocked.portfolio = true;
         if (!state.marketIndex) state.marketIndex = 1;
@@ -919,16 +923,21 @@ function buildProperties(){
                 </div>
                 <div class="lock-note" data-lock hidden></div>
                 <button class="buy-btn" data-buy>Buy</button>
+                <button class="sell-btn" data-sellbtn hidden>Sell ×1</button>
             </div>`;
         list.appendChild(card);
         const btn = card.querySelector('[data-buy]');
         btn.addEventListener('click', (e)=> buyProperty(p.id, e));
+        const sellBtn = card.querySelector('[data-sellbtn]');
+        sellBtn.addEventListener('click', (e)=> sellProperty(p.id, e));
 
         updaters.push(()=>{
             const st = state.properties[p.id];
             const unlocked = propertyCount() >= p.unlock;
             card.classList.toggle('locked', !unlocked);
             card.classList.toggle('has-owned', st.count > 0);
+            sellBtn.hidden = st.count < 1;
+            if (st.count >= 1) sellBtn.textContent = `Sell ×1 — nets ${money(sellEstimate(p))}`;
             card.querySelector('[data-count]').textContent = st.count > 0 ? 'Owned ×' + st.count : 'On the market';
             card.querySelector('[data-price]').textContent = money(st.cost);
             card.querySelector('[data-dep]').textContent = money(Math.floor(st.cost * p.deposit));
@@ -1352,14 +1361,11 @@ function doOperation(op, e){
    price you paid (you forgo the gain). Because a fresh purchase banks its basis at
    today's index, an immediate re-sale nets ≈0 — no buy-then-flip arbitrage. */
 let _lastSold = null;
-function sellTopProperty(atCost){
-    _lastSold = null;                 // never let a previous sale's toast repeat on a no-op
-    let best = 0, id = null;
-    PROPERTIES.forEach(p=>{ if (state.properties[p.id].count>0 && p.price>best){ best=p.price; id=p.id; } });
-    if (!id) return 0;
+function sellUnit(id, atCost){
     const p = PROPERTIES.find(x=>x.id===id);
     const st = state.properties[id];
-    const avgDe = st.count > 0 ? st.deBasis / st.count : 0;   // de-indexed basis of the average unit
+    if (!p || !st || st.count < 1) return 0;
+    const avgDe = st.deBasis / st.count;   // de-indexed basis of the average held unit
     const sale = atCost ? p.price : avgDe * state.marketIndex;
     const loanShare = Math.min(state.debt, p.price * (1 - p.deposit));
     const cashOut = Math.max(0, sale - loanShare);
@@ -1370,6 +1376,35 @@ function sellTopProperty(atCost){
     state.money += cashOut;
     _lastSold = { name: p.name, cash: cashOut };
     return cashOut;
+}
+function sellTopProperty(atCost){
+    _lastSold = null;                 // never let a previous sale's toast repeat on a no-op
+    let best = 0, id = null;
+    PROPERTIES.forEach(p=>{ if (state.properties[p.id].count>0 && p.price>best){ best=p.price; id=p.id; } });
+    if (!id) return 0;
+    return sellUnit(id, atCost);
+}
+/* estimated net cash from selling one unit of a type right now (for the card UI) */
+function sellEstimate(p){
+    const st = state.properties[p.id];
+    if (!st || st.count < 1) return 0;
+    return Math.max(0, (st.deBasis / st.count) * state.marketIndex - Math.min(state.debt, p.price * (1 - p.deposit)));
+}
+/* player-chosen sale from a property card — the clean way out of a bad position */
+function sellProperty(id, e){
+    const st = state.properties[id];
+    if (state.ended || !st || st.count < 1) return;
+    _lastSold = null;
+    const p = PROPERTIES.find(x=>x.id===id);
+    const cash = sellUnit(id, false);
+    fx('+'+money(cash), 'pos', e);
+    flashCash(false);
+    blip(260);
+    toast(cash > 0 ? `Sold a ${p.name} — ${money(cash)} after the bank took its share.`
+                   : `Sold a ${p.name} — the entire price went to the mortgage. Ouch.`, cash > 0 ? 'good' : 'bad');
+    addNews(`You quietly sold a ${p.name.toLowerCase()} at market. An owner-occupier finally wins an auction; the neighbourhood's landlords raise rents in mourning.`, 'event');
+    if (syncTenants()) renderTenants();
+    refresh();
 }
 
 /* a tenant leaves: show a clear on-card "moved out" moment, apply any cost/heat,
@@ -1495,7 +1530,13 @@ function doPolitics(pa, e){
     state.money -= cost;
     fx('−'+money(cost), 'neg', e);
     flashCash(true);
-    if (pa.spendInfl){ state.influence -= pa.spendInfl; fx('−'+pa.spendInfl+' infl', 'neg', e); }
+    if (pa.spendInfl){
+        state.influence -= pa.spendInfl;
+        fx('−'+pa.spendInfl+' infl', 'neg', e);
+        // late game, buying silence leaves a pattern Parliament can see — the more
+        // influence you burn, the faster the Select Committee's interest builds
+        if (!pa.ending && phaseInfo().i >= 3) inquiryNudge(pa.spendInfl * 0.22);
+    }
     if (pa.infl){ addInfluence(pa.infl, e); }
     if (pa.heat){ addHeat(pa.heat, e); }
     if (pa.heat && pa.heat < 0) dossierNudge(pa.heat * 1.6);   // laundering/spiking sets Vane back
@@ -1539,6 +1580,7 @@ function onWeek(){
     state._spree = Math.max(0, (state._spree || 0) - CFG.SPREE_DECAY);   // a quiet week cools the pattern
     state.marketIndex *= (1 + CFG.APPRECIATION/52);   // steady appreciation
     dossierTick();
+    inquiryTick();
 
     const nowS = now()/1000;
     if (nowS - (state._lastNews||0) > CFG.NEWS_COOLDOWN && Math.random() < 0.3){
@@ -1854,6 +1896,7 @@ const ACHIEVEMENTS = [
     { id:'decent',      emoji:'🫶', name:'A Rare Decent Act',             desc:'Actually fix the heat pump for the family.' },
     { id:'ghost',       emoji:'🌃', name:'Lights On, Nobody Home',        desc:'Take on thirty deliberately-empty apartments.' },
     { id:'textmin',     emoji:'📲', name:'Straight to the Top',           desc:'Text a minister directly.' },
+    { id:'stonewall',   emoji:'🏛️', name:'A Matter of Privilege',         desc:'Face a select-committee inquiry into your media habits.' },
     { id:'vane',        emoji:'📰', name:'Front-Page Material',           desc:'Get published by Fiona Vane.' },
     { id:'winMinister', emoji:'🏛️', name:'The Coronation',                desc:'Be appointed Minister of Housing.' },
     { id:'winEmpire',   emoji:'🥂', name:'Weather System With a Mortgage', desc:'Reach a $400m empire.' },
@@ -1930,6 +1973,45 @@ function dossierPublish(){
     addHeat(34);
 }
 function dossierNudge(delta){ state.dossier = clamp(state.dossier + delta, 0, 100); }
+
+/* --------------------------------------------- THE INQUIRY (late-game pressure)
+   Once you're a Property Mogul, every spiked story and greased consent feeds a
+   Select Committee's interest. Vane can be silenced with influence; Parliament
+   notices exactly that silencing. Fill the meter and you're summoned. */
+const INQUIRY_CHAPTERS = [
+    { at:35, news:`🏛️ A backbench MP asks, on the record, why housing stories keep dying mid-publication. The press gallery sniggers. One reporter doesn't.`,
+      line:'A backbencher is asking questions.' },
+    { at:70, news:`🏛️ The Ombudsman opens a file on "coordinated interference in housing coverage." Your name recurs in the appendix. Twice, in bold.`,
+      line:'The Ombudsman has a file. You\'re the appendix.' },
+];
+function inquiryNudge(d){ state.inquiry = clamp((state.inquiry||0) + d, 0, 100); }
+function inquiryTick(){
+    if ((state.inquiry||0) <= 0) return;
+    if (state.inquiry >= 100){ conveneInquiry(); return; }   // stays hot until the hearing happens
+    state.inquiry = clamp(state.inquiry - 0.5, 0, 100);
+    let ch = 0;
+    INQUIRY_CHAPTERS.forEach((c,i)=>{ if (state.inquiry >= c.at) ch = i+1; });
+    if (ch > state._inquiryChapter){
+        state._inquiryChapter = ch;
+        addNews(INQUIRY_CHAPTERS[ch-1].news, 'bad');
+        newsFlash();
+    } else if (ch < state._inquiryChapter) state._inquiryChapter = ch;
+}
+function conveneInquiry(){
+    if (_dilemmaOpen || !$('modal-overlay').hidden || state.ended) return;   // retry next week
+    openDilemma({
+        id:'inquiry', kicker:'Select Committee · Summons',
+        title:'The Inquiry convenes 🏛️',
+        body:`<p>Too many spiked stories. Too many consents arriving overnight. Parliament's privileges committee has noticed the pattern, and <b>you are the pattern</b>. Your appearance is requested. Cameras will be present. The chair does not take donations.</p>`,
+        choices:[
+            { label:'Testify, hat in hand', cls:'ghost', ach:'stonewall',
+              apply:s=>{ s.influence = Math.floor(s.influence * 0.55); addHeat(-12); s.inquiry = 0; s._inquiryChapter = 0; },
+              result:`You appear contrite, concede "process learnings," and volunteer nothing under oath that wasn't already public. The committee thanks you for your candour. Your influence circle, watching at home, quietly cools on you for a season.`, news:'event' },
+            { label:'Stonewall behind a King\'s Counsel', ach:'stonewall',
+              apply:s=>{ s.money -= 200000; addHeat(20); s.inquiry = 35; s._inquiryChapter = 0; },
+              result:`Your KC answers every question with a longer question. Privilege is claimed on a lunch order. It costs $200k, plays terribly on the news — and buys you a season. They will be back.`, news:'bad' },
+        ]});
+}
 
 /* ------------------------------------------------------------------ LIVE TICKER */
 let _tickerItems = [], _lastTickerRender = 0;
@@ -2232,7 +2314,7 @@ function modalHelp(){
         <p><b>1. Buy on leverage.</b> You don't pay cash for houses — you put down a <b>deposit</b> (investors ~35%) and the bank lends the rest as a mortgage. The debt costs weekly interest, so cheap provincial stock earns, while Auckland &amp; prestige homes <span style="color:var(--red-dark)">bleed cash</span> — you buy those for the capital gain.</p>
         <p><b>2. The bank is the game.</b> It lends up to <b>7× your income</b>, counting ~78% of your rent — so every rent rise unlocks more borrowing. (A first-home buyer gets 6× and counts none of it. That's the joke, and the mechanic.) New builds dodge the limits entirely. When values rise, hit <b>🏦 Release equity</b> (top of the Buy tab, or the gold line on your Cash tile) to pull the paper gain out as spendable cash — it's new debt, but that's never stopped anyone.</p>
         <p><b>3. Squeeze for cash — but it costs you Scrutiny.</b> Raising rents, inventing fees, ignoring standards and evicting all pay <i>now</i> and unlock borrowing — but each one adds <span style="color:#e8a84a;font-weight:700">Public Scrutiny 🔥</span> (the meter up top) and feeds <b>Fiona Vane's dossier</b>. Push a tenant's rent too far and they're <b>priced out</b> — you eat the void &amp; re-let, and heat spikes. <i>That's</i> the cost of squeezing.</p>
-        <p><b>4. Cool the Scrutiny with Influence.</b> Turn cash into <span style="color:var(--gold);font-weight:700">Political Influence 🏛️</span> (Politics tab) and spend it to Spike the Story, launder your reputation, or rewrite the law. Hire <b>Services</b> (mostly weekly) to squeeze harder for less heat. Tap the little <b>ⓘ</b> on the Scrutiny and Influence tiles any time for a refresher.</p>
+        <p><b>4. Cool the Scrutiny with Influence.</b> Turn cash into <span style="color:var(--gold);font-weight:700">Political Influence 🏛️</span> (Politics tab) and spend it to Spike the Story, launder your reputation, or rewrite the law. Hire <b>Services</b> (mostly weekly) to squeeze harder for less heat. Tap the little <b>ⓘ</b> on the Scrutiny and Influence tiles any time for a refresher. One warning: once you're a <b>Property Mogul</b>, every story you spike feeds a <b>Select Committee's</b> interest — buy too much silence and Parliament summons you.</p>
         <p><b>5. Win, or get caught.</b> Let Scrutiny redline — or let Vane's file hit 100% — and the <b>Exposé</b> ends your run. Over-leverage into a rate hike and the <b>Market Correction</b> bankrupts you. Climb to the top and bank <b>500 influence</b> to seize the Kāinga Ora board and become <b>Minister of Housing</b>. (There's a secret ending for playing clean, too.)</p>
     `, [
         { label: state.hintsOff ? '💡 Show helper tips' : '💡 Hide helper tips', cls:'ghost', fn:()=>{ setHints(!!state.hintsOff); closeModal(); } },
@@ -2693,6 +2775,20 @@ function refresh(){
             wt.classList.toggle('ready', phOk && inflOk && cashOk);
             const lbl = wt.querySelector('.wt-label');
             if (lbl) lbl.textContent = (phOk && inflOk && cashOk) ? '🎯 The board seat is yours — claim it in Politics' : '🎯 Path to Minister';
+        }
+    }
+
+    // Select Committee strip (influence tile)
+    const istrip = $('inquiry-strip');
+    if (istrip){
+        const iActive = (state.inquiry||0) > 0.5;
+        istrip.hidden = !iActive;
+        if (iActive){
+            $('inquiry-pct').textContent = Math.round(state.inquiry) + '%';
+            $('inquiry-fill').style.width = clamp(state.inquiry,0,100) + '%';
+            const iLines = ['Every spiked story leaves a paper trail.', INQUIRY_CHAPTERS[0].line, INQUIRY_CHAPTERS[1].line];
+            $('inquiry-chapter').textContent = iLines[state._inquiryChapter] || iLines[0];
+            istrip.classList.toggle('hot', state.inquiry >= 72);
         }
     }
 
