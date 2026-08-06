@@ -174,10 +174,10 @@ const POLITICS = [
       desc:'No official channel, no paper trail — just a mate\'s number and "you around?" It worked for that 2024 board appointment nobody was allowed to ask about.',
       news:s => `A Cabinet-level problem resolved by text, in the grand tradition of an appointment that bypassed the usual process entirely.` },
 
-    { id:'board', emoji:'🏛️', name:'Get onto the Kāinga Ora Board', political:true, need:{infl:500, phase:4},
+    { id:'board', emoji:'🗳️', name:'Buy a Safe List Seat', political:true, need:{infl:500, phase:4},
       cost:(s)=> 500000, spendInfl:500, ending:'minister',
-      desc:'Bill English reviewed KO and found it "not financially viable." The fix, obviously, is a commercial mind like yours. You are the arson and the insurance claim — and with the election weeks away, donors of your calibre have a way of appearing high on a party list.',
-      news:s => `You are appointed to govern the housing agency you spent years plundering. Poacher, meet gamekeeper; gamekeeper, meet governance stipend.` },
+      desc:'Ministers must be MPs — and under MMP, becoming one needs no voters, just a party that owes you. The election is weeks away, every party you\'ve funded owes you, and a high list ranking costs less than a Remuera villa. This is how landlords become lawmakers.',
+      news:s => `Your name appears, high and unbothered, on a party list. Nobody voted for it; that's rather the point. On 7 November, arithmetic does the rest.` },
 ];
 
 const PARTIES = ['National (for the tax cuts)','Labour (hedging the CGT)','ACT (for the red-tape bonfire)','NZ First (for the vibes)','whoever wins on 7 November'];
@@ -2090,10 +2090,10 @@ function showEndingModal(kind){
 
     const E = {
         minister: { kicker:'Ending — The Coronation', title:'Minister of Housing 🏛️',
-            body:`<p>It starts with the Kāinga Ora board — the seat you bought the modern way: a text to a mate, no process, no questions. For a few weeks you merely <i>govern</i> the housing agency you spent years plundering.</p>
-                  <p>Then the party you funded from every side settles its debt the MMP way: a <b>list seat</b> — ranked high enough to be safe, quietly enough to avoid questions. You never knock on a door; doors were always someone else's problem. On <b>7 November</b> the party scrapes home and you drift into Parliament as a list MP nobody voted for by name.</p>
-                  <p>A new government needs a Housing Minister the sector "trusts." There you are: already an MP, already on the board, already "the sector," already holding the pen on the RMA replacement. By Christmas you're sworn in.</p>
-                  <p>A landlord with <b>${state.evictions} evictions</b> and <b>${state.violations} ignored standards</b> now sets the rules for every renter in the country. You go on the news to say the answer is "supply" and "getting government out of the way." Reporters nod. In a car parked outside, a nurse the bank declined reads it and turns the engine on for warmth.</p>
+            body:`<p>The parties you funded from every side settle the debt the MMP way: a <b>list seat</b>, ranked high enough to be safe, quietly enough to avoid questions. You never knock on a single door — doors were always someone else's problem. On <b>7 November</b> the arithmetic lands and you drift into Parliament, a list MP nobody voted for by name.</p>
+                  <p>The new government needs a Housing Minister the sector "trusts." There you are: already "the sector," already holding the pen on the RMA replacement. By Christmas you're sworn in.</p>
+                  <p>A landlord with <b>${state.evictions} evictions</b> and <b>${state.violations} ignored standards</b> now sets the rules for every renter in the country. Your first act: appointing a fresh commercial mind to the Kāinga Ora board — someone, everyone notes approvingly, exactly like you. The arson now hires the insurance assessors.</p>
+                  <p>You go on the news to say the answer is "supply" and "getting government out of the way." Reporters nod. In a car parked outside, a nurse the bank declined reads it and turns the engine on for warmth.</p>
                   <p>The irony is so dense you could subdivide it. Consent-free, obviously.</p>` },
         empire: { kicker:'Ending — Total Victory', title:'The Empire 🏢',
             body:`<p>Net worth past four hundred million, most of it borrowed into being. You own so much of Aotearoa that "landlord" undersells it — you're a weather system with a mortgage.</p>
@@ -2329,7 +2329,7 @@ function modalHelp(){
         <p><b>2. The bank is the game.</b> It lends up to <b>7× your income</b>, counting ~78% of your rent — so every rent rise unlocks more borrowing. (A first-home buyer gets 6× and counts none of it. That's the joke, and the mechanic.) New builds dodge the limits entirely. When values rise, hit <b>🏦 Release equity</b> (top of the Buy tab, or the gold line on your Cash tile) to pull the paper gain out as spendable cash — it's new debt, but that's never stopped anyone.</p>
         <p><b>3. Squeeze for cash — but it costs you Scrutiny.</b> Raising rents, inventing fees, ignoring standards and evicting all pay <i>now</i> and unlock borrowing — but each one adds <span style="color:#e8a84a;font-weight:700">Public Scrutiny 🔥</span> (the meter up top) and feeds <b>Fiona Vane's dossier</b>. Push a tenant's rent too far and they're <b>priced out</b> — you eat the void &amp; re-let, and heat spikes. <i>That's</i> the cost of squeezing.</p>
         <p><b>4. Cool the Scrutiny with Influence.</b> Turn cash into <span style="color:var(--gold);font-weight:700">Political Influence 🏛️</span> (Politics tab) and spend it to Spike the Story, launder your reputation, or rewrite the law. Hire <b>Services</b> (mostly weekly) to squeeze harder for less heat. Tap the little <b>ⓘ</b> on the Scrutiny and Influence tiles any time for a refresher. One warning: once you're a <b>Property Mogul</b>, every story you spike feeds a <b>Select Committee's</b> interest — buy too much silence and Parliament summons you.</p>
-        <p><b>5. Win, or get caught.</b> Let Scrutiny redline — or let Vane's file hit 100% — and the <b>Exposé</b> ends your run. Over-leverage into a rate hike and the <b>Market Correction</b> bankrupts you. Climb to the top and bank <b>500 influence</b> to seize the Kāinga Ora board and become <b>Minister of Housing</b>. (There's a secret ending for playing clean, too.)</p>
+        <p><b>5. Win, or get caught.</b> Let Scrutiny redline — or let Vane's file hit 100% — and the <b>Exposé</b> ends your run. Over-leverage into a rate hike and the <b>Market Correction</b> bankrupts you. Climb to the top and bank <b>500 influence</b> to buy a safe list seat and become <b>Minister of Housing</b>. (There's a secret ending for playing clean, too.)</p>
     `, [
         { label: state.hintsOff ? '💡 Show helper tips' : '💡 Hide helper tips', cls:'ghost', fn:()=>{ setHints(!!state.hintsOff); closeModal(); } },
         { label:'Let\'s ruin some lives', cls:'primary', fn:()=> closeModal() },
@@ -2352,7 +2352,7 @@ function influenceExplainer(){
         <h1>The get-out-of-jail currency</h1>
         <p><b>What it is:</b> your pull with the people who write the rules — worth more than cash once the heat is on.</p>
         <p><b>How to earn it:</b> in the 🏛️ Politics tab — donate to parties, grease a consent, take Landlord of the Year. A <b>Lobbyist</b> on retainer (Services) also earns you influence every time you squeeze.</p>
-        <p><b>What to spend it on:</b> cooling <b>Public Scrutiny</b> (Spike the Story), permanently softening the rules — and the win itself: bank <b>500</b> and seize the Kāinga Ora board to become <b>Minister of Housing</b>.</p>
+        <p><b>What to spend it on:</b> cooling <b>Public Scrutiny</b> (Spike the Story), permanently softening the rules — and the win itself: bank <b>500</b> and buy a safe list seat to become <b>Minister of Housing</b>.</p>
         <p style="color:var(--muted);font-style:italic;">Cash buys houses. Influence buys immunity.</p>
     `, [{ label:'Got it', cls:'primary', fn:()=> closeModal() }]);
 }
@@ -2612,9 +2612,9 @@ function coachStep(){
     if (props >= 3 && !anyHireEngaged() && grossRentWeekly() > 3000)
         return { text:"Your rent roll's big enough that a Property Manager would pay for itself. Have a look in Services.", tab:'services' };
     if (ph >= 4 && s.influence < 500)
-        return { text:"You're one move from the top. Bank Influence in Politics — the Kāinga Ora board seat is the win.", tab:'politics' };
+        return { text:"You're one move from the top. Bank Influence in Politics — the safe list seat is the win.", tab:'politics' };
     if (ph >= 4)
-        return { text:"Take the Kāinga Ora board seat in Politics. Become the Minister. Poacher, meet gamekeeper.", tab:'politics' };
+        return { text:"Buy the safe list seat in Politics. Become the Minister. Poacher, meet gamekeeper.", tab:'politics' };
     return { text:"Keep buying, keep squeezing, keep your scrutiny down. Every rung is closer to Minister.", tab:'portfolio' };
 }
 function canAffordAnyProperty(){ return PROPERTIES.some(p => propertyCount() >= p.unlock && plannedBuy(p).n >= 1); }
@@ -2730,7 +2730,7 @@ function refresh(){
             ? 'Earn it in 🏛️ Politics — donate, bribe, lobby.'
             : (state.influence < 500
                 ? 'Spend it in 🏛️ Politics to Spike the Story & cool Scrutiny. Bank 500 to win.'
-                : 'You can seize the Kāinga Ora board now — become Minister in 🏛️ Politics.');
+                : 'A safe list seat is within reach — become Minister in 🏛️ Politics.');
     }
 
     // bank strip
@@ -2788,7 +2788,7 @@ function refresh(){
             seg('wt-cash',  cashOk, cashOk ? '$500k fee banked' : `${money(state.money)} / $500k fee`);
             wt.classList.toggle('ready', phOk && inflOk && cashOk);
             const lbl = wt.querySelector('.wt-label');
-            if (lbl) lbl.textContent = (phOk && inflOk && cashOk) ? '🎯 The board seat is yours — claim it in Politics' : '🎯 Path to Minister';
+            if (lbl) lbl.textContent = (phOk && inflOk && cashOk) ? '🎯 Your list seat awaits — claim it in Politics' : '🎯 Path to Minister';
         }
     }
 
