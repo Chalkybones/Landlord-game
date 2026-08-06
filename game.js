@@ -245,7 +245,7 @@ const SERVICES = [
 const PHASES = [
     { min:0,          name:'Generation Rent Refugee' },
     { min:250000,     name:'Mum & Dad Investor' },
-    { min:1200000,    name:'Portfolio Landlord' },
+    { min:950000,     name:'Portfolio Landlord' },
     { min:5000000,    name:'Property Mogul' },
     { min:20000000,   name:'Housing Spokesperson' },
     { min:75000000,   name:'Shadow Housing Minister' },
@@ -508,7 +508,7 @@ function multipliers(){
               * (u.rentAlgo ? 1.40 : 1)
               * (1 + state.legacy * CFG.LEGACY_BONUS),
         heatGen: (u.astroturf ? 0.75 : 1) * state.permHeatMult,
-        heatDecay: CFG.BASE_HEAT_DECAY + (u.prFirm ? 5 : 0) + (u.astroturf ? 0.8 : 0),
+        heatDecay: CFG.BASE_HEAT_DECAY + (u.prFirm ? 3.5 : 0) + (u.astroturf ? 0.8 : 0),
         passivePerTenant: (u.methKit ? 16 : 0) + (u.accomSupp ? 24 : 0),
         inflPerOp: u.lobbyist ? 3 : 0,
     };
@@ -1463,10 +1463,13 @@ function squeezeTenant(idx, e){
     const bump = 20 + Math.floor(Math.random()*25);
     t.rent += bump;
     t.strain = clamp(t.strain + 15 + Math.floor(Math.random()*6), 0, 100);  // ~4–5 squeezes of runway
-    state.money += bump * 10;              // the back-rent you just extracted — satisfying, discrete
+    // pays the back-rent plus a slice of the whole roll, so squeezing a named tenant
+    // stays your best moment-to-moment move at every empire size — not just minute one
+    const take = bump * 10 + Math.floor(grossRentWeekly() * 0.04);
+    state.money += take;
     state.rentMultBonus += 0.003;          // squeezing individuals nudges your whole rent roll up
     state.rentRaises++;
-    fx('+'+money(bump*10), 'pos', e);
+    fx('+'+money(take), 'pos', e);
     flashCash(false);
     addHeat(4 * multipliers().heatGen, e);
     blip(220);
@@ -1579,6 +1582,9 @@ function onWeek(){
     state.heat = clamp(state.heat - m.heatDecay, 0, CFG.HEAT_MAX);
     state._spree = Math.max(0, (state._spree || 0) - CFG.SPREE_DECAY);   // a quiet week cools the pattern
     state.marketIndex *= (1 + CFG.APPRECIATION/52);   // steady appreciation
+    // a week without a rent letter and tenants breathe a little — strain eases, faces
+    // soften, and "ease off before they walk" becomes an actual rhythm, not a caption
+    state.featured.forEach(t => { if (t) t.strain = clamp(t.strain - 2, 0, 100); });
     dossierTick();
     inquiryTick();
 
