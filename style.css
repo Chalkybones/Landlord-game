@@ -281,7 +281,9 @@ body {
     display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
     background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
     padding: 7px 12px; margin-bottom: 14px; box-shadow: var(--shadow-sm); font-size: .78em;
+    cursor: pointer; transition: border-color .12s;
 }
+.win-tracker:hover { border-color: rgba(242,192,74,.45); }
 .wt-label { font-weight: 800; color: var(--gold); letter-spacing: .02em; }
 .wt-seg {
     font-weight: 700; color: var(--muted); background: var(--card); border: 1px solid var(--line);

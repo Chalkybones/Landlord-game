@@ -174,7 +174,7 @@ const POLITICS = [
       desc:'No official channel, no paper trail — just a mate\'s number and "you around?" It worked for that 2024 board appointment nobody was allowed to ask about.',
       news:s => `A Cabinet-level problem resolved by text, in the grand tradition of an appointment that bypassed the usual process entirely.` },
 
-    { id:'board', emoji:'🏛️', name:'Get onto the Kāinga Ora Board', political:true, need:{infl:520, phase:4},
+    { id:'board', emoji:'🏛️', name:'Get onto the Kāinga Ora Board', political:true, need:{infl:500, phase:4},
       cost:(s)=> 500000, spendInfl:500, ending:'minister',
       desc:'Bill English reviewed KO and found it "not financially viable." The fix, obviously, is a commercial mind like yours. You are the arson and the insurance claim.',
       news:s => `You are appointed to govern the housing agency you spent years plundering. Poacher, meet gamekeeper; gamekeeper, meet governance stipend.` },
@@ -1911,10 +1911,16 @@ const ACHIEVEMENTS = [
     { id:'lostCollapse',emoji:'📉', name:'Margin Called',                 desc:'Leverage yourself into oblivion.' },
 ];
 function achCount(){ let n=0; ACHIEVEMENTS.forEach(a=>{ if (state.achievements[a.id]) n++; }); return n; }
+/* the Rap Sheet is "your permanent record" — so it survives resets and Play Again.
+   Trophies mirror to their own key, which hardReset deliberately leaves alone. */
+const RAP_KEY = 'kiwiLandlordEmpire_rap';
+function stashRap(){ try { localStorage.setItem(RAP_KEY, JSON.stringify(state.achievements || {})); } catch(e){} }
+function mergeRap(){ try { Object.assign(state.achievements, JSON.parse(localStorage.getItem(RAP_KEY) || '{}')); } catch(e){} }
 function unlockAch(id){
     if (!id || state.achievements[id]) return;
     const a = ACHIEVEMENTS.find(x=>x.id===id); if (!a) return;
     state.achievements[id] = true;
+    stashRap();
     toast(`🏅 Rap Sheet: ${a.name}`, 'gold');
     addNews(`🏅 <b>Rap sheet updated —</b> "${a.name}": ${a.desc}`, 'event');
     confetti(24); blip(520);
@@ -2603,7 +2609,7 @@ function coachStep(){
         return { text:"You've got cash sitting there doing nothing evil. Buy another rental and put it to work.", tab:'portfolio' };
     if (props >= 3 && !anyHireEngaged() && grossRentWeekly() > 3000)
         return { text:"Your rent roll's big enough that a Property Manager would pay for itself. Have a look in Services.", tab:'services' };
-    if (ph >= 4 && s.influence < 520)
+    if (ph >= 4 && s.influence < 500)
         return { text:"You're one move from the top. Bank Influence in Politics — the Kāinga Ora board seat is the win.", tab:'politics' };
     if (ph >= 4)
         return { text:"Take the Kāinga Ora board seat in Politics. Become the Minister. Poacher, meet gamekeeper.", tab:'politics' };
@@ -2767,16 +2773,16 @@ function refresh(){
     const pt = $('prop-total');
     if (pt) pt.textContent = props > 0 ? `· you own ${props}` : '';
 
-    // path-to-the-win tracker: phase 4 + 520 influence + the $500k board "donation"
+    // path-to-the-win tracker: phase 4 + 500 influence + the $500k board "donation"
     const wt = $('win-tracker');
     if (wt){
         const showWt = !state.ended && !!state.unlocked.politics;
         wt.hidden = !showWt;
         if (showWt){
             const seg = (id, done, txt)=>{ const el = $(id); if (el){ el.textContent = (done ? '✓ ' : '') + txt; el.classList.toggle('done', done); } };
-            const phOk = ph.i >= 4, inflOk = state.influence >= 520, cashOk = state.money >= 500000;
+            const phOk = ph.i >= 4, inflOk = state.influence >= 500, cashOk = state.money >= 500000;
             seg('wt-phase', phOk, phOk ? PHASES[4].name : `status ${ph.i}/4`);
-            seg('wt-infl',  inflOk, `${fmt(Math.min(state.influence, 520))}/520 influence`);
+            seg('wt-infl',  inflOk, `${fmt(Math.min(state.influence, 500))}/500 influence`);
             seg('wt-cash',  cashOk, cashOk ? '$500k fee banked' : `${money(state.money)} / $500k fee`);
             wt.classList.toggle('ready', phOk && inflOk && cashOk);
             const lbl = wt.querySelector('.wt-label');
@@ -2865,6 +2871,8 @@ function setupEvents(){
     const objHow = $('obj-how'); if (objHow) objHow.addEventListener('click', modalHelp);
     const rel = $('bank-release'); if (rel) rel.addEventListener('click', (e)=> releaseEquity(e));
     // the cash-tile bank line jumps you to the strip it's talking about
+    const wtEl = $('win-tracker');
+    if (wtEl) wtEl.addEventListener('click', ()=> selectTab('politics'));
     const cb = $('cash-bank');
     if (cb) cb.addEventListener('click', ()=>{
         selectTab('portfolio');
@@ -2900,6 +2908,7 @@ function setupEvents(){
 
 function init(){
     const had = loadGame();
+    mergeRap();                      // trophies survive resets — it's a permanent record
     state._phaseSeen = phaseInfo().i;
     state._unlockedSeen = unlockedTierCount();
     syncTenants();
