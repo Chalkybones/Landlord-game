@@ -176,7 +176,7 @@ const POLITICS = [
 
     { id:'board', emoji:'🏛️', name:'Get onto the Kāinga Ora Board', political:true, need:{infl:500, phase:4},
       cost:(s)=> 500000, spendInfl:500, ending:'minister',
-      desc:'Bill English reviewed KO and found it "not financially viable." The fix, obviously, is a commercial mind like yours. You are the arson and the insurance claim — and with the election weeks away, board members of your calibre have a way of ending up in Cabinet.',
+      desc:'Bill English reviewed KO and found it "not financially viable." The fix, obviously, is a commercial mind like yours. You are the arson and the insurance claim — and with the election weeks away, donors of your calibre have a way of appearing high on a party list.',
       news:s => `You are appointed to govern the housing agency you spent years plundering. Poacher, meet gamekeeper; gamekeeper, meet governance stipend.` },
 ];
 
@@ -2091,7 +2091,8 @@ function showEndingModal(kind){
     const E = {
         minister: { kicker:'Ending — The Coronation', title:'Minister of Housing 🏛️',
             body:`<p>It starts with the Kāinga Ora board — the seat you bought the modern way: a text to a mate, no process, no questions. For a few weeks you merely <i>govern</i> the housing agency you spent years plundering.</p>
-                  <p>Then the <b>7 November election</b> lands. The party you funded from every side scrapes home, and it needs a Housing Minister the sector "trusts." There you are: already on the board, already "the sector," already holding the pen on the RMA replacement. By Christmas you're sworn in.</p>
+                  <p>Then the party you funded from every side settles its debt the MMP way: a <b>list seat</b> — ranked high enough to be safe, quietly enough to avoid questions. You never knock on a door; doors were always someone else's problem. On <b>7 November</b> the party scrapes home and you drift into Parliament as a list MP nobody voted for by name.</p>
+                  <p>A new government needs a Housing Minister the sector "trusts." There you are: already an MP, already on the board, already "the sector," already holding the pen on the RMA replacement. By Christmas you're sworn in.</p>
                   <p>A landlord with <b>${state.evictions} evictions</b> and <b>${state.violations} ignored standards</b> now sets the rules for every renter in the country. You go on the news to say the answer is "supply" and "getting government out of the way." Reporters nod. In a car parked outside, a nurse the bank declined reads it and turns the engine on for warmth.</p>
                   <p>The irony is so dense you could subdivide it. Consent-free, obviously.</p>` },
         empire: { kicker:'Ending — Total Victory', title:'The Empire 🏢',
